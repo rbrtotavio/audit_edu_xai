@@ -1,0 +1,34 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments & Virtual Environments
+venv/
+venv*/
+env/
+env*/
+.venv/
+
+# Raw Data (ENEM CSVs are too large for Git)
+data/raw/*
+!data/raw/.gitkeep
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Testing and Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Python Distribution / Packaging
+build/
+dist/
+*.egg-info/
