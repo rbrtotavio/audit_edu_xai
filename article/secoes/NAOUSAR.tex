@@ -1,0 +1,35 @@
+\subsection{Definição dos Atributos e Métricas de Desempenho}
+A métrica central utilizada para balizar o desempenho estudantil na plataforma é a Nota Média Geral (NMG), definida pela média aritmética simples das cinco competências avaliadas pelo INEP:
+\[
+NMG=\frac{Nota_{CN}+Nota_{CH}+Nota_{LC}+Nota_{MT}+Nota_{RED}}{5}
+\]
+Onde $Nota_{CN}$, $Nota_{CH}$, $Nota_{LC}$, $Nota_{MT}$ e $Nota_{RED}$ correspondem às notas obtidas pelos pelo participante nas provas de Ciências da Natureza, Ciências Humanas, Linguagens e Códigos, Matemática e Redação, respectivamente.
+
+Para viabilizar a aplicação de algoritmos de aprendizado de máquina supervisionado voltados à classificação binária, a $NMG$ é transformada em uma variável alvo categórica ($Y$). Define-se um corte com base na mediana ($\tilde{x}$) das notas da respectiva edição do exame. O atributo preditivo assume valor de sucesso ($1$) para desempenhos iguais ou superiores à mediana, e insucesso ($0$) para valores inferiores:
+
+\[
+Y = \begin{cases} 1, & \text{se } NMG \geq \tilde{x} \\ 0, & \text{se } NMG < \tilde{x} \end{cases}
+\]
+
+\subsection{Treinamento do Modelo Objeto de Auditoria}Antes da aplicação dos mecanismos de auditoria de viés, estabelece-se o modelo preditivo que servirá como objeto de análise ("caixa-preta"). São testados três algoritmos de ampla adoção na literatura preditiva: Logistic Regression, Random Forest Classifier e XGBoost Classifier.A base de dados de cada edição do exame é particionada de forma estratificada na proporção de 70% para o conjunto de treinamento e 30% para o conjunto de teste. A otimização dos hiperparâmetros dos modelos é conduzida por meio da técnica de Grid Search combinada com validação cruzada ($k$-fold, com $k=5$). O modelo que apresentar o melhor equilíbrio estatístico entre as métricas de F1-Score e a Área Sob a Curva ROC (AUC-ROC) no conjunto de teste é selecionado para submissão aos módulos de equidade e explicabilidade da ferramenta.
+
+\section{Motores de Auditoria: Equidade Algorítmica e Explicabilidade (XAI)}
+Esta seção detalha o arcabouço matemático e computacional empregado pelo artefato para mensurar disparidades estatísticas e conferir transparência às decisões tomadas pelo classificador escolhido.
+
+\subsection{Métricas de Equidade Algorítmica (Fairness Metrics)}O diagnóstico de vieses na ferramenta baseia-se na comparação do comportamento do modelo entre grupos privilegiados ($G_1$) e grupos protegidos ($G_0$), segregados de acordo com os atributos socioeconômicos (como Raça/Cor e Renda Familiar). Duas métricas de equidade são computadas programaticamente:
+\begin{itemize}
+    \item Paridade Demográfica (Demographic Parity): Exige que a probabilidade de um candidato receber uma predição positiva (classificada como $1$) seja idêntica para ambos os grupos, desconsiderando o valor real do rótulo. A condição de equidade é expressa por:
+    \[
+    P(\hat{Y} = 1 \mid G = G_1) = P(\hat{Y} = 1 \mid G = G_0)
+    \]
+    \item Impacto Disparate (Disparate Impact - DI): Métrica de razão que quantifica a distribuição dessas predições. Adota-se o limiar internacionalmente consagrado da regra dos quatro quintos ($80\%$), estipulado pela Equal Employment Opportunity Commission (EEOC). Valores de $DI < 0.8$ atestam a ocorrência de viés algorítmico prejudicial contra o grupo protegido:
+    \[
+    DI = \frac{P(\hat{Y} = 1 \mid G = G_0)}{P(\hat{Y} = 1 \mid G = G_1)}
+    \]
+\end{itemize}
+
+\subsection{Explicabilidade Post-Hoc via Framework SHAP}Para decodificar as decisões do classificador e quantificar o peso individual das variáveis demográficas e socioeconômicas, a ferramenta integra o framework SHAP (Shapley Additive exPlanations), baseado na teoria dos jogos cooperativos. O SHAP calcula os valores de Shapley ($\phi_i$) para extrair a contribuição marginal de cada variável na mudança do score predito em relação à previsão média da base. A função de explicação local adota uma estrutura linear aditiva de atribuição de importância:
+\[
+g(z') = \phi_0 + \sum_{i=1}^{M} \phi_i z'_i
+\]
+Onde $g(z')$ representa o modelo de explicação local, $\phi_0$ representa o valor esperado das predições do modelo (a média global das saídas), $z' \in \{0, 1\}^M$ é o vetor de características simplificadas que denota a presença ou ausência do atributo, e $M$ indica o número total de variáveis mapeadas. Os valores calculados são consolidados na interface em gráficos globais de importância (Summary Plots) e gráficos de forças locais (Force Plots), discriminando o impacto positivo ou negativo das vulnerabilidades socioeconômicas no resultado final.

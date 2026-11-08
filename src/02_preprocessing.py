@@ -62,7 +62,7 @@ def preprocess_enem_year(year: int, sample_size: int = SAMPLE_SIZE, seed: int = 
         except ValueError:
             # Fallback seguro para amostras pequenas (ex: dados sintéticos de teste)
             print("[INFO] Estratificação estrita não aplicável pela quantidade de classes; executando amostragem simples.")
-            df_sampled = df.sampled(n=target_n, random_state=seed)
+            df_sampled = df.sample(n=target_n, random_state=seed)
         df_sampled = df_sampled.reset_index(drop=True)
     else:
         print(f"O tamanho do dataset ({len(df):,}) é menor ou igual ao limite de amostragem. Mantendo todos os registros.")

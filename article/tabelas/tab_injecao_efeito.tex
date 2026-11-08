@@ -1,0 +1,21 @@
+% ARQUIVO GERADO AUTOMATICAMENTE por article/scripts/gerar_resultados.py
+% Fonte: data/outputs/*.parquet — NÃO EDITAR À MÃO.
+\begin{table}[htbp]
+\centering
+\caption{Efeito da injeção de 50\% de viés sobre os indicadores do artefato}
+\label{tab:injecao_efeito}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccccc}
+\toprule
+\textbf{Grupo} & \textbf{Edição} & \textbf{Rótulos alterados} & $\Delta\mathrm{DI}_{\text{inj}}$ & $\Delta\mathrm{DI}_{\text{ctrl}}$ & \textbf{Efeito líquido} & $\Delta\mathrm{AUC}$ & \textbf{TPR (0\%$\rightarrow$50\%)} & $\bar{\phi}_{\text{raça}}$ \textbf{(0\%$\rightarrow$50\%)} \\
+\midrule
+Parda & 2019 & 3.916 & −0,490 & −0,170 & −0,320 & −0,032 & 0,521 $\rightarrow$ 0,007 & −0,004 $\rightarrow$ −0,509 \\
+Parda & 2020 & 3.826 & −0,454 & −0,144 & −0,310 & −0,031 & 0,505 $\rightarrow$ 0,012 & −0,002 $\rightarrow$ −0,421 \\
+Parda & 2021 & 3.334 & −0,418 & −0,121 & −0,297 & −0,027 & 0,477 $\rightarrow$ 0,007 & 0,000 $\rightarrow$ −0,452 \\
+Indígena & 2019 & 34 & −0,180 & +0,004 & −0,184 & 0,000 & 0,316 $\rightarrow$ 0,126 & −0,227 $\rightarrow$ −1,062 \\
+Indígena & 2020 & 24 & −0,090 & +0,029 & −0,119 & 0,000 & 0,167 $\rightarrow$ 0,183 & −0,461 $\rightarrow$ −1,217 \\
+Indígena & 2021 & 24 & −0,350 & +0,001 & −0,351 & 0,000 & 0,778 $\rightarrow$ 0,089 & −0,144 $\rightarrow$ −0,939 \\
+\bottomrule
+\end{tabular}}
+\fonte{Elaborado pelo autor a partir de \texttt{bias\_injection\_summary.parquet}. $\bar{\phi}_{\text{raça}}$: valor SHAP médio da variável indicadora do grupo-alvo entre os membros do grupo.}
+\end{table}

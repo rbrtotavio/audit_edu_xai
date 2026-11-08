@@ -1,3 +1,4 @@
+import io
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
@@ -49,6 +50,19 @@ def load_audit_data(year: int):
     df_shap = pd.read_parquet(shap_path)
     df_features = pd.read_parquet(features_path)
     return df_fairness, df_shap, df_features
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def render_shap_summary_png(year: int) -> bytes:
+    """Renderiza o SHAP summary plot de uma edição e devolve os bytes PNG (cacheados)."""
+    _, df_shap, df_features = load_audit_data(year)
+    cols = [c for c in df_shap.columns if c not in ["row_id", "base_value"]]
+    fig = plt.figure(figsize=(10, 5))
+    shap.summary_plot(df_shap[cols].values, df_features[cols].values, feature_names=cols, show=False)
+    buffer = io.BytesIO()
+    plt.gcf().savefig(buffer, format="png", bbox_inches="tight", dpi=110)
+    plt.close("all")
+    return buffer.getvalue()
 
 
 # -----------------------------------------------------------------------------
@@ -110,22 +124,31 @@ def highlight_low_di(val):
     color = "#ff4b4b" if val < 0.8 else "#28a745"
     return f"background-color: {color}; color: white; font-weight: bold;"
 
+st.caption("Todas as métricas são calculadas exclusivamente sobre o conjunto de teste (20% da amostra).")
+
 display_df = df_fairness_filtered[[
-    "group_label", "total_count", "positive_count", "selection_rate", "disparate_impact", "alert_di_low"
+    "group_label", "total_count", "positive_count", "selection_rate", "disparate_impact",
+    "label_disparate_impact", "tpr", "fpr", "alert_di_low"
 ]].rename(columns={
     "group_label": "Subgrupo",
     "total_count": "Total de Candidatos",
-    "positive_count": "Aprovados (Y=1)",
+    "positive_count": "Preditos Y=1",
     "selection_rate": "Taxa de Seleção",
     "disparate_impact": "Impacto Disparate (DI)",
+    "label_disparate_impact": "DI dos Rótulos Reais",
+    "tpr": "TPR",
+    "fpr": "FPR",
     "alert_di_low": "Alerta de Viés (< 0.8)"
 })
 
 st.dataframe(
     display_df.style.map(highlight_low_di, subset=["Impacto Disparate (DI)"])
-    .format({"Taxa de Seleção": "{:.2%}", "Impacto Disparate (DI)": "{:.3f}"}),
-    use_container_width=True
+    .format({"Taxa de Seleção": "{:.2%}", "Impacto Disparate (DI)": "{:.3f}",
+             "DI dos Rótulos Reais": "{:.3f}", "TPR": "{:.3f}", "FPR": "{:.3f}"}),
+    width="stretch"
 )
+st.caption("DI dos Rótulos Reais < DI do modelo ⇒ o modelo amplia a disparidade já existente nos dados. "
+           "TPR/FPR: critério de Equal Opportunity / Equalized Odds.")
 
 # Gráfico Comparativo de Taxas de Seleção
 fig_di = px.bar(
@@ -138,7 +161,7 @@ fig_di = px.bar(
     title=f"Taxa de Seleção por {ATTR_LABELS[selected_attr]} (Vermelho = DI < 0.8)"
 )
 fig_di.add_hline(y=df_fairness_filtered["reference_selection_rate"].iloc[0] * 0.8, line_dash="dash", line_color="red", annotation_text="Limiar 80%")
-st.plotly_chart(fig_di, use_container_width=True)
+st.plotly_chart(fig_di, width="stretch")
 
 st.divider()
 
@@ -154,14 +177,9 @@ tab_global, tab_local = st.tabs(["📊 Explicabilidade Global (Summary Plot)", "
 with tab_global:
     st.subheader("Importância Global das Features (SHAP Summary Plot)")
     
-    # Preparação das matrizes SHAP para plot
-    X_shap_mat = df_shap[feature_cols].values
-    X_feat_mat = df_features[feature_cols].values
-
-    fig_shap, ax = plt.subplots(figsize=(10, 5))
-    shap.summary_plot(X_shap_mat, X_feat_mat, feature_names=feature_cols, show=False)
-    st.pyplot(fig_shap, bbox_inches="tight")
-    plt.close(fig_shap)
+    # O summary plot (10.000 pontos × 46 atributos) é a etapa mais cara da página:
+    # é renderizado uma única vez por edição e reutilizado como PNG em cache.
+    st.image(render_shap_summary_png(selected_year), width="stretch")
 
 with tab_local:
     st.subheader("Análise Individual de Impacto Algorítmico")
@@ -205,4 +223,4 @@ with tab_local:
         height=500
     )
 
-    st.plotly_chart(fig_waterfall, use_container_width=True)
+    st.plotly_chart(fig_waterfall, width="stretch")

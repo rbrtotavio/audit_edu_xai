@@ -1,0 +1,73 @@
+\chapter{Trabalhos Relacionados}
+\label{cap:trabalhos_relacionados}
+
+Este capítulo apresenta e discute os principais trabalhos da literatura correlatos ao tema desta pesquisa, divididos em eixos temáticos estruturais: os modelos preditivos aplicados ao Exame Nacional do Ensino Médio (ENEM); os arcabouços de justiça algorítmica (\textit{fairness}) e explicabilidade em sistemas educacionais; e o panorama regulatório nacional que baliza a tomada de decisão automatizada. Ao final, estabelece-se um paralelo comparativo para destacar a lacuna científica preenchida pelo presente trabalho.
+
+\section{Predição de Desempenho no ENEM via Aprendizado de Máquina}
+\label{sec:predicao_enem_ml}
+
+A aplicação de algoritmos de aprendizado de máquina supervisionado para prever o rendimento acadêmico no ENEM tem se consolidado como um campo dinâmico de pesquisa. Diversos autores investigam de que forma as disparidades socioeconômicas reportadas nos microdados do Instituto Nacional de Estudos e Pesquisas Educacionais Anísio Teixeira (INEP) determinam a proficiência dos candidatos.
+
+O estudo de Luz e Matheus \cite{luz2026uso} analisou os dados da edição de 2023 do exame, utilizando algoritmos baseados em árvores de decisão e \textit{gradient boosting} (como CatBoost e XGBoost) para classificar estudantes com risco de obter desempenho abaixo da média nacional. Os autores demonstraram que o enriquecimento do conjunto de dados por meio de \textit{embeddings} semânticos extraídos do questionário socioeconômico otimizou de forma robusta o poder discriminatório do modelo, permitindo alcançar um F1-Score consistente de 0,76. O trabalho aponta limites empíricos para predições puramente socioeconômicas e defende o uso agregado desses modelos como indicadores de desigualdades de renda, raça, gênero e território, desaconselhando decisões individuais punitivas.
+
+Em paralelo, Marques et al. \cite{marques2023desigualdades} desenvolveram modelos baseados em Random Forest para classificar o desempenho dos participantes do ENEM 2023, empregando técnicas de sobreamostragem (SMOTE) para mitigar o desbalanceamento das classes de rendimento. Os resultados da pesquisa revelaram acurácias próximas a 94\% e precisão de até 99\% na estratificação dos candidatos, apontando a escolaridade e ocupação dos pais, associadas à renda familiar mensal, como os vetores de maior impacto estatístico no sucesso acadêmico. Tais achados corroboram a literatura clássica de avaliação educacional, que evidencia o forte peso do capital cultural familiar na proficiência individual.
+
+\section{Justiça Algorítmica e Mitigação de Vieses na Educação}
+\label{sec:justica_mitigacao_educacao}
+
+Embora classificadores de alta performance atinjam métricas satisfatórias de acurácia global, a literatura recente alerta para a reprodução e amplificação de preconceitos históricos caso os algoritmos não sejam auditados. A área de Justiça Algorítmica (\textit{Algorithmic Fairness}) foca em quantificar e mitigar desvios estatísticos desfavoráveis a subgrupos protegidos por atributos sensíveis.
+
+O estudo desenvolvido no contexto da \textit{Higher Colleges of Technology} em Sharjah \cite{itt2025fairness}, utilizando o conjunto de dados público OULAD, exemplifica a gravidade do problema ao demonstrar que classificadores padrão baseados em Random Forest tendem a discriminar sistematicamente alunos sem qualificações acadêmicas prévias ou oriundos de estratos socioeconômicos desfavorecidos. Para solucionar esse desvio, os pesquisadores demonstraram a eficácia do uso combinado de técnicas de pré-processamento, como a reponderação de instâncias (\textit{Reweighing}), e de pós-processamento, como o ajuste de limiares de decisão (\textit{Thresholding}), estabelecendo diretrizes técnicas viáveis para a conformidade equitativa de sistemas de avaliação.
+
+Para quantificar essas disparidades demográficas sobre atributos sensíveis (como Cor/Raça e Renda), a literatura computacional estabeleceu métricas formais, detalhadas na Seção~\ref{sec:rt_fairness}. Na formulação clássica, define-se \textit{a priori} um grupo protegido ($G_0$) e um grupo privilegiado ($G_1$). A Paridade Demográfica avalia a diferença entre suas probabilidades de predição positiva:
+\begin{equation*}
+\Delta = P(\hat{Y}=1 \mid G=G_0) - P(\hat{Y}=1 \mid G=G_1),
+\end{equation*}
+e o Impacto Disparate (DI), a razão entre elas \cite{feldman2015certifying}:
+\begin{equation*}
+\mathrm{DI} = \frac{P(\hat{Y}=1 \mid G=G_0)}{P(\hat{Y}=1 \mid G=G_1)}.
+\end{equation*}
+
+Nessa formulação, o DI pode assumir valores acima de 1 quando o grupo designado como protegido é, na prática, o mais favorecido. Por essa razão, parte da literatura e das ferramentas de auditoria considera indício de discriminação qualquer DI fora do intervalo $[0{,}8;\ 1{,}25]$: o limite superior corresponde ao inverso do inferior ($1/0{,}8 = 1{,}25$) e captura a disparidade no sentido oposto. O artefato proposto neste trabalho adota uma formulação equivalente, porém sem designação prévia: o grupo de referência é determinado \textbf{empiricamente} como o subgrupo de maior taxa de seleção (Equação~\eqref{eq:di}). Assim, o DI do artefato fica limitado ao intervalo $[0, 1]$, e apenas o limite inferior de 0,8 da regra dos quatro quintos \cite{eeoc1978uniform} precisa ser verificado. A escolha dispensa julgamentos prévios sobre qual grupo é privilegiado, o que é relevante para atributos com muitas categorias, como as 17 faixas de renda do ENEM, e assegura que qualquer disparidade seja medida em relação ao grupo mais favorecido pelo modelo.
+
+Para automatizar esse ciclo de auditoria, bibliotecas de código aberto como Fairlearn \cite{bird2020fairlearn} e AI Fairness 360 (AIF360) \cite{bellamy2018aif360} oferecem algoritmos para lidar com múltiplos conceitos de equidade. Contudo, sua integração prática exige alto conhecimento técnico. Para atenuar essa barreira, Johnson et al. \cite{johnson2022fairkit} propuseram o framework Fairkit-learn, um utilitário interativo que realiza buscas automatizadas em grade (\textit{grid search}) para testar milhares de permutações de modelos, filtrando as saídas em um conjunto Pareto-ótimo que expõe visualmente o dilema (\textit{trade-off}) entre acurácia e equidade.
+
+\section{Explicabilidade Post-Hoc e Proveniência de Dados para Auditoria}
+\label{sec:explicabilidade_proveniencia}
+
+Tornar inteligíveis os modelos ``caixa-preta'' de alta complexidade é um requisito crítico para a legitimidade das decisões públicas automatizadas. O framework SHAP (\textit{Shapley Additive exPlanations}), introduzido por Lundberg e Lee \cite{lundberg2017unified}, preenche essa lacuna com base na teoria dos jogos cooperativos, atribuindo a cada variável um valor de Shapley que mensura o seu impacto marginal na mudança do \textit{score} predito em relação à média global de predição.
+
+A literatura de auditoria também destaca o papel fundamental da rastreabilidade e da proveniência de dados (\textit{provenance logging}) para validar os diagnósticos de viés. Conforme demonstrado em auditorias de sistemas de inteligência artificial \cite{amann2022provenance}, o registro estruturado das rotinas de transformação e do caminho lógico da informação viabiliza a execução de análises de sensibilidade robustas sobre indivíduos posicionados na fronteira de decisão do classificador. Por meio de testes contrafactuais direcionados (por exemplo, invertendo artificialmente a variável raça/cor de um candidato e mensurando se a saída do modelo se altera), os auditores conseguem validar estatisticamente as alegações de discriminação, distinguindo desvios sistemáticos de flutuações amostrais aleatórias.
+
+\section{O Panorama Regulatório Brasileiro: LGPD, ANPD e o PL 2338/2023}
+\label{sec:panorama_regulatorio}
+
+A dimensão tecnológica da auditoria algorítmica deve estar alinhada às normativas jurídicas nacionais vigentes e em discussão. O Artigo 20 da Lei Geral de Proteção de Dados (LGPD) estabelece o direito do titular de solicitar a revisão de decisões tomadas unicamente com base em tratamento automatizado de seus dados pessoais.
+
+A Autoridade Nacional de Proteção de Dados (ANPD), por meio de sua Nota Técnica nº 12/2025/CON1/CGN/ANPD \cite{anpd2025nota12}, consolidou as contribuições sobre decisões automatizadas no contexto de inteligência artificial. A Nota Técnica delimitou que o direito à explicação é atendido pelo fornecimento da lógica normativa (as regras de negócio e critérios gerais que nortearam a decisão), de forma a não exigir o detalhamento da lógica técnica proprietária do código, preservando o segredo comercial e industrial. Contudo, em casos de recusa injustificada de informações, a ANPD detém a competência para realizar auditorias diretas a fim de apurar discriminação algorítmica. Além disso, o documento aponta a tensão operacional em torno do direito de retificação de dados em modelos treinados, cujo atendimento pode exigir o retreinamento completo do sistema preditivo.
+
+Adicionalmente, as discussões sobre o Marco Legal da Inteligência Artificial no Brasil, consubstanciadas no Projeto de Lei nº 2.338/2023 \cite{brasil2023pl2338}, tendem a classificar sistemas preditivos empregados em processos seletivos educacionais como de alto risco. Essa classificação impõe aos desenvolvedores e gestores públicos a obrigação legal de elaborar Avaliações de Impacto Algorítmico (AIA) e disponibilizar mecanismos transparentes de revisão e explicação humana, conferindo ao presente trabalho uma relevância jurídica direta.
+
+\section{Comparativo de Trabalhos Relacionados e a Lacuna de Pesquisa}
+\label{sec:comparativo_trabalhos}
+
+A Tabela~\ref{tab:comparativo_trabalhos} consolida o comparativo entre os trabalhos relacionados e a proposta deste projeto de conclusão de curso, evidenciando as dimensões metodológicas abordadas por cada iniciativa.
+
+\begin{table}[ht]
+\centering
+\caption{Comparativo analítico de trabalhos relacionados}
+\label{tab:comparativo_trabalhos}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Trabalho / Estudo} & \textbf{Domínio ENEM} & \textbf{Auditoria / Fairness} & \textbf{Explicabilidade (XAI)} & \textbf{Arquitetura Desacoplada} & \textbf{Validação por Injeção} \\ \hline
+Luz e Matheus (2026) & Sim & Não & Parcial & Não & Não \\ \hline
+Marques et al. (2023) & Sim & Não & Não & Não & Não \\ \hline
+Sharjah Study (2025) & Não & Sim & Não & Não & Não \\ \hline
+Fairkit-learn & Não & Sim & Não & Não & Não \\ \hline
+\textbf{Esta Plataforma (TCC)} & \textbf{Sim} & \textbf{Sim} & \textbf{Sim} & \textbf{Sim} & \textbf{Sim} \\ \hline
+\end{tabular}
+}
+\end{table}
+
+A análise comparativa revela que, embora os estudos nacionais explorem o treinamento de modelos preditivos com dados do ENEM, há uma escassez de ferramentas focadas em prover auditoria sistemática de equidade e explicabilidade visual direcionada a gestores e pesquisadores. Por outro lado, as ferramentas de \textit{fairness} existentes operam de forma isolada, demandando infraestruturas pesadas incompatíveis com servidores de hospedagem de acesso público e gratuito. O presente trabalho preenche essa lacuna de pesquisa ao conceber uma solução integrada de arquitetura desacoplada, dotada de motores automatizados de equidade, explicações baseadas em SHAP e um protocolo experimental rigoroso fundamentado em injeção de vieses sintéticos.

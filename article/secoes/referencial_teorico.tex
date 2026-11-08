@@ -1,0 +1,148 @@
+\chapter{Referencial Teórico}
+\label{cap:referencial}
+
+Este capítulo apresenta os fundamentos que sustentam o trabalho: a Mineração de Dados Educacionais e o problema da opacidade algorítmica, o algoritmo XGBoost, as definições formais de Justiça Algorítmica, a Inteligência Artificial Explicável baseada em valores de Shapley e a metodologia de \textit{Design Science Research}.
+
+% ---------------------------------------------------------------------------
+\section{Mineração de Dados Educacionais e Predição de Desempenho}
+\label{sec:rt_mde}
+
+A Mineração de Dados Educacionais (MDE) aplica técnicas de estatística e aprendizado de máquina a dados produzidos em contextos de ensino, com o objetivo de compreender processos de aprendizagem e apoiar decisões pedagógicas e administrativas \cite{romero2010educational}. Entre suas aplicações mais difundidas estão a predição de desempenho acadêmico, a identificação precoce de risco de evasão e o apoio a processos seletivos.
+
+No Brasil, os microdados do ENEM constituem uma das bases mais utilizadas para esse fim, por combinarem as notas de milhões de participantes com um questionário socioeconômico detalhado \cite{inep2022microdados}. Essa riqueza, contudo, traz um risco: as variáveis do questionário (renda familiar, escolaridade dos pais, raça/cor, acesso a tecnologia) registram desigualdades estruturais da sociedade brasileira. Modelos treinados sobre esses dados tendem a incorporá-las como regularidades estatísticas. \citeonline{baker2022algorithmic} mostram que o viés algorítmico em sistemas educacionais é documentado para diversos grupos demográficos e pode surgir em qualquer etapa do ciclo de vida do modelo, da coleta dos dados à interpretação das predições.
+
+% ---------------------------------------------------------------------------
+\section{Opacidade Algorítmica e o Problema da Caixa-Preta}
+\label{sec:rt_caixa_preta}
+
+Modelos de alto desempenho, como \textit{ensembles} de árvores e redes neurais, combinam centenas ou milhares de componentes cujas interações não são diretamente inteligíveis para seres humanos. Essa característica é conhecida como problema da \textit{caixa-preta} \cite{adadi2018peeking}. A opacidade dificulta a responsabilização, impede a contestação de decisões e oculta padrões discriminatórios. \citeonline{rudin2019stop} argumenta que, em decisões de alto impacto, modelos intrinsecamente interpretáveis deveriam ser preferidos. Quando modelos complexos são empregados, técnicas de explicação \textit{post-hoc} tornam-se condição mínima de transparência \cite{arrieta2020explainable}.
+
+A questão ganha contornos jurídicos no Brasil. O Art.~20 da Lei Geral de Proteção de Dados assegura ao titular o direito de solicitar a revisão de decisões tomadas unicamente com base em tratamento automatizado e de obter informações sobre os critérios utilizados \cite{brasil2018lgpd}. O Projeto de Lei nº 2.338/2023 tende a classificar sistemas de IA aplicados a processos seletivos educacionais como de alto risco \cite{brasil2023pl2338}.
+
+% ---------------------------------------------------------------------------
+\section{\textit{Gradient Boosting} e o Algoritmo XGBoost}
+\label{sec:rt_xgboost}
+
+O \textit{gradient boosting} constrói um modelo preditivo como soma de modelos fracos, tipicamente árvores de decisão rasas, ajustados sequencialmente para corrigir os erros dos anteriores \cite{friedman2001greedy, hastie2009elements}. Para uma instância $x_i$, a predição após $K$ árvores é:
+\begin{equation}
+\hat{y}_i = \sum_{k=1}^{K} f_k(x_i), \qquad f_k \in \mathcal{F},
+\label{eq:rt_boosting}
+\end{equation}
+em que $\mathcal{F}$ é o espaço das árvores de regressão. Em classificação binária, $\hat{y}_i$ é um escore na escala log-odds, convertido em probabilidade pela função logística $\sigma(z) = 1/(1+e^{-z})$.
+
+O XGBoost \cite{chen2016xgboost} formaliza o treinamento como a minimização de um objetivo regularizado:
+\begin{equation}
+\mathcal{L} = \sum_{i=1}^{n} \ell(y_i, \hat{y}_i) + \sum_{k=1}^{K} \Omega(f_k), \qquad \Omega(f) = \gamma T + \frac{1}{2}\lambda \lVert w \rVert^2,
+\label{eq:rt_xgb_obj}
+\end{equation}
+em que $\ell$ é a função de perda (log-loss, no caso binário), $T$ é o número de folhas da árvore, $w$ é o vetor de pesos das folhas e $\gamma$ e $\lambda$ são hiperparâmetros de regularização. A cada iteração, o algoritmo aproxima a perda por uma expansão de Taylor de segunda ordem, o que permite calcular analiticamente o peso ótimo de cada folha e o ganho de cada divisão. Somados a otimizações de sistema (paralelização e tratamento de esparsidade), esses elementos explicam o desempenho do XGBoost em dados tabulares, seu domínio característico. A estrutura em árvores também viabiliza o cálculo exato e eficiente de explicações (Seção~\ref{sec:rt_xai}).
+
+% ---------------------------------------------------------------------------
+\section{Justiça Algorítmica}
+\label{sec:rt_fairness}
+
+\subsection{Origens do Viés}
+
+A Justiça Algorítmica (\textit{Algorithmic Fairness}) estuda como sistemas automatizados podem produzir resultados sistematicamente desfavoráveis a grupos definidos por atributos sensíveis, como raça, gênero ou renda, e como medir e mitigar esse efeito \cite{barocas2023fairness, mehrabi2021survey}. Entre as fontes de viés destacam-se:
+\begin{itemize}
+    \item o \textbf{viés histórico}, quando os dados refletem desigualdades preexistentes na sociedade, mesmo que corretamente medidos;
+    \item o \textbf{viés de representação}, quando grupos minoritários são sub-representados, o que torna as estimativas sobre eles menos precisas;
+    \item o \textbf{viés de rótulo}, quando a variável-alvo é, ela própria, produto de processos discriminatórios.
+\end{itemize}
+
+Uma resposta ingênua seria simplesmente remover o atributo sensível do modelo (\textit{fairness through unawareness}). \citeonline{dwork2012fairness} demonstram que essa estratégia é insuficiente, pois outras variáveis correlacionadas ao atributo (\textit{proxies}) permitem reconstruí-lo implicitamente. Por isso, a auditoria precisa medir os \textbf{resultados} do modelo por grupo, e não apenas inspecionar suas entradas.
+
+\subsection{Critérios de Justiça de Grupo}
+
+Sejam $\hat{Y} \in \{0,1\}$ a predição, $Y \in \{0,1\}$ o rótulo real e $G$ o atributo sensível. A literatura consolidou três famílias principais de critérios de justiça de grupo \cite{barocas2023fairness}.
+
+A \textbf{Paridade Demográfica} (independência) exige que a probabilidade de predição positiva não dependa do grupo:
+\begin{equation}
+P(\hat{Y} = 1 \mid G = a) = P(\hat{Y} = 1 \mid G = b), \quad \forall\, a, b.
+\label{eq:rt_dp}
+\end{equation}
+Sua forma de razão é o \textbf{Impacto Disparate} (DI), que compara a taxa de seleção de um grupo $a$ à de um grupo de referência $b$:
+\begin{equation}
+\mathrm{DI} = \frac{P(\hat{Y} = 1 \mid G = a)}{P(\hat{Y} = 1 \mid G = b)}.
+\label{eq:rt_di}
+\end{equation}
+A métrica tem origem no direito antidiscriminatório norte-americano. As diretrizes da \textit{Equal Employment Opportunity Commission} estabelecem a \textbf{regra dos quatro quintos}: uma taxa de seleção inferior a 80\% da taxa do grupo mais favorecido constitui evidência de impacto adverso \cite{eeoc1978uniform}. \citeonline{feldman2015certifying} formalizaram essa regra no contexto do aprendizado de máquina, definindo como discriminatório um classificador com $\mathrm{DI} < \tau$, com $\tau = 0{,}8$.
+
+A Paridade Demográfica ignora os rótulos reais. Se as taxas-base diferem entre os grupos, mesmo um classificador perfeito a violaria. Para considerar a correção das predições, \citeonline{hardt2016equality} propuseram a \textbf{Igualdade de Oportunidades} (\textit{Equal Opportunity}), que exige taxas de verdadeiros positivos iguais:
+\begin{equation}
+P(\hat{Y} = 1 \mid Y = 1, G = a) = P(\hat{Y} = 1 \mid Y = 1, G = b),
+\label{eq:rt_eo}
+\end{equation}
+e sua versão mais forte, as \textbf{Chances Equalizadas} (\textit{Equalized Odds}), que exige também a igualdade das taxas de falsos positivos:
+\begin{equation}
+P(\hat{Y} = 1 \mid Y = y, G = a) = P(\hat{Y} = 1 \mid Y = y, G = b), \quad y \in \{0, 1\}.
+\label{eq:rt_eodds}
+\end{equation}
+No contexto educacional, a Igualdade de Oportunidades tem interpretação direta: candidatos com desempenho efetivamente alto devem ter a mesma chance de serem reconhecidos pelo modelo, qualquer que seja o seu grupo.
+
+\subsection{Incompatibilidade entre Critérios}
+
+Os critérios acima não podem, em geral, ser satisfeitos simultaneamente. \citeonline{kleinberg2017inherent} e \citeonline{chouldechova2017fair} demonstraram que, quando as taxas-base diferem entre os grupos, é matematicamente impossível equalizar ao mesmo tempo a calibração e as taxas de erro, exceto em casos degenerados. Consequentemente, uma auditoria não deve se apoiar em um único indicador: a escolha das métricas é uma decisão normativa, e reportar critérios complementares, como o DI e a TPR, oferece um diagnóstico mais completo. Bibliotecas como Fairlearn \cite{bird2020fairlearn} e AI Fairness 360 \cite{bellamy2018aif360} implementam esses critérios, mas exigem integração programática especializada.
+
+% ---------------------------------------------------------------------------
+\section{Inteligência Artificial Explicável}
+\label{sec:rt_xai}
+
+\subsection{Taxonomia}
+
+A Inteligência Artificial Explicável (XAI) reúne métodos que tornam compreensíveis as decisões de modelos de aprendizado de máquina \cite{arrieta2020explainable, adadi2018peeking}. Esses métodos podem ser classificados em três eixos:
+\begin{itemize}
+    \item \textbf{intrínsecos} (o modelo é interpretável por construção) ou \textbf{\textit{post-hoc}} (aplicados a um modelo já treinado);
+    \item \textbf{globais} (explicam o comportamento geral do modelo) ou \textbf{locais} (explicam uma predição individual);
+    \item \textbf{agnósticos ao modelo} ou \textbf{específicos} de uma família de modelos.
+\end{itemize}
+O método SHAP, adotado neste trabalho, é \textit{post-hoc}, produz explicações locais agregáveis em globais e possui uma versão específica e exata para modelos baseados em árvores.
+
+\subsection{Valores de Shapley}
+
+Os valores de Shapley provêm da teoria dos jogos cooperativos e resolvem o problema de repartir o ganho de uma coalizão entre seus jogadores \cite{shapley1953value}. Considere um conjunto $F$ de $M$ jogadores e uma função característica $v: 2^F \rightarrow \mathbb{R}$ que atribui um valor a cada coalizão $S \subseteq F$. A contribuição do jogador $i$ é a média ponderada de suas contribuições marginais sobre todas as coalizões possíveis:
+\begin{equation}
+\phi_i(v) = \sum_{S \subseteq F \setminus \{i\}} \frac{|S|!\,(M - |S| - 1)!}{M!}\, \bigl[ v(S \cup \{i\}) - v(S) \bigr].
+\label{eq:rt_shapley}
+\end{equation}
+
+O valor de Shapley é a única regra de repartição que satisfaz simultaneamente quatro axiomas:
+\begin{enumerate}
+    \item \textbf{eficiência}: as contribuições somam o valor total, $\sum_i \phi_i = v(F) - v(\emptyset)$;
+    \item \textbf{simetria}: jogadores com contribuições marginais idênticas recebem valores iguais;
+    \item \textbf{jogador nulo}: um jogador que não altera nenhuma coalizão recebe valor zero;
+    \item \textbf{aditividade}: o valor de um jogo composto é a soma dos valores dos jogos componentes.
+\end{enumerate}
+
+\subsection{SHAP e TreeSHAP}
+
+\citeonline{lundberg2017unified} transpuseram esse arcabouço para a explicação de modelos. Na formulação SHAP (\textit{SHapley Additive exPlanations}), os atributos são os jogadores e a predição do modelo é o ganho. A explicação assume a forma de um modelo aditivo de atribuição:
+\begin{equation}
+g(z') = \phi_0 + \sum_{i=1}^{M} \phi_i z'_i, \qquad z' \in \{0,1\}^M,
+\label{eq:rt_shap}
+\end{equation}
+em que $z'_i$ indica a presença do atributo $i$ e $\phi_0$ é a predição média do modelo. Os autores demonstram que os valores de Shapley constituem a única solução dessa classe que satisfaz as propriedades de precisão local, ausência (\textit{missingness}) e consistência. A precisão local garante que a explicação reconstrói exatamente a predição: $f(x) = \phi_0 + \sum_i \phi_i$.
+
+O cálculo direto da Equação~\eqref{eq:rt_shapley} tem custo exponencial em $M$. Para modelos baseados em árvores, o algoritmo TreeSHAP calcula os valores exatos em tempo polinomial, $O(TLD^2)$, sendo $T$ o número de árvores, $L$ o número máximo de folhas e $D$ a profundidade máxima \cite{lundberg2020local}. Isso torna viável explicar todas as instâncias de um conjunto de teste. Agregados pela média dos valores absolutos, os valores locais fornecem uma medida de importância global consistente.
+
+% ---------------------------------------------------------------------------
+\section{\textit{Design Science Research}}
+\label{sec:rt_dsr}
+
+A \textit{Design Science Research} (DSR) é um paradigma de pesquisa orientado à criação e à avaliação de artefatos (construtos, modelos, métodos ou instâncias) que resolvem problemas relevantes \cite{hevner2004design}. Em contraste com a pesquisa comportamental, que busca explicar fenômenos existentes, a DSR produz conhecimento ao projetar algo novo e demonstrar rigorosamente sua utilidade. \citeonline{hevner2004design} enfatizam que a avaliação do artefato, por métodos analíticos, experimentais ou observacionais, é parte constitutiva da contribuição científica.
+
+\citeonline{peffers2007design} sistematizaram o paradigma na \textit{Design Science Research Methodology}, composta por seis atividades:
+\begin{enumerate}
+    \item identificação do problema e motivação;
+    \item definição dos objetivos da solução;
+    \item projeto e desenvolvimento;
+    \item demonstração;
+    \item avaliação;
+    \item comunicação.
+\end{enumerate}
+O processo é iterativo, e os resultados da avaliação podem realimentar o projeto. A aplicação dessa metodologia ao presente trabalho é detalhada no Capítulo~\ref{cap:metodologia}.
+
+% ---------------------------------------------------------------------------
+\section{Considerações do Capítulo}
+
+Os fundamentos apresentados delineiam a lacuna que o trabalho aborda. Modelos como o XGBoost oferecem alto desempenho em dados tabulares, mas são opacos. Os critérios de justiça de grupo permitem quantificar disparidades, mas nenhum deles é suficiente isoladamente. O SHAP permite explicar as decisões com garantias teóricas, e a DSR fornece o arcabouço para construir e avaliar rigorosamente um artefato que integre esses elementos.

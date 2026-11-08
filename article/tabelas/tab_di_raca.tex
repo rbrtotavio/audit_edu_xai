@@ -1,0 +1,37 @@
+% ARQUIVO GERADO AUTOMATICAMENTE por article/scripts/gerar_resultados.py
+% Fonte: data/outputs/*.parquet — NÃO EDITAR À MÃO.
+\begin{table}[htbp]
+\centering
+\caption{Impacto Disparate e taxas de erro por raça/cor no conjunto de teste}
+\label{tab:di_raca}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Grupo} & \textbf{$n$} & \textbf{Taxa de seleção} & \textbf{DI} & \textbf{TPR} & \textbf{FPR} & \textbf{DI $<$ 0,8} \\
+\midrule
+\multicolumn{7}{l}{\textbf{ENEM 2019}} \\
+\quad Branca (ref.) & 3.723 & 0,686 & 1,000 & 0,801 & 0,492 & Não \\
+\quad Preta & 1.219 & 0,292 & 0,426 & 0,469 & 0,174 & \textbf{Sim} \\
+\quad Parda & 4.581 & 0,340 & 0,495 & 0,521 & 0,205 & \textbf{Sim} \\
+\quad Amarela & 225 & 0,418 & 0,609 & 0,623 & 0,235 & \textbf{Sim} \\
+\quad Indígena & 52 & 0,173 & 0,252 & 0,316 & 0,091 & \textbf{Sim} \\
+\quad Não declarada & 200 & 0,425 & 0,620 & 0,580 & 0,227 & \textbf{Sim} \\
+\midrule
+\multicolumn{7}{l}{\textbf{ENEM 2020}} \\
+\quad Branca (ref.) & 3.793 & 0,725 & 1,000 & 0,842 & 0,527 & Não \\
+\quad Preta & 1.227 & 0,265 & 0,365 & 0,418 & 0,165 & \textbf{Sim} \\
+\quad Parda & 4.505 & 0,335 & 0,462 & 0,505 & 0,210 & \textbf{Sim} \\
+\quad Amarela & 230 & 0,361 & 0,498 & 0,496 & 0,221 & \textbf{Sim} \\
+\quad Indígena & 49 & 0,122 & 0,169 & 0,167 & 0,108 & \textbf{Sim} \\
+\quad Não declarada & 196 & 0,459 & 0,633 & 0,627 & 0,277 & \textbf{Sim} \\
+\midrule
+\multicolumn{7}{l}{\textbf{ENEM 2021}} \\
+\quad Branca (ref.) & 4.427 & 0,715 & 1,000 & 0,830 & 0,530 & Não \\
+\quad Preta & 1.104 & 0,241 & 0,337 & 0,343 & 0,182 & \textbf{Sim} \\
+\quad Parda & 4.022 & 0,302 & 0,423 & 0,477 & 0,182 & \textbf{Sim} \\
+\quad Amarela & 211 & 0,474 & 0,663 & 0,706 & 0,225 & \textbf{Sim} \\
+\quad Indígena & 47 & 0,298 & 0,417 & 0,778 & 0,184 & \textbf{Sim} \\
+\quad Não declarada & 189 & 0,450 & 0,629 & 0,602 & 0,302 & \textbf{Sim} \\
+\bottomrule
+\end{tabular}
+\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Grupo de referência: maior taxa de seleção.}
+\end{table}

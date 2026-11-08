@@ -1,0 +1,198 @@
+\chapter{Desenvolvimento do Artefato}
+\label{cap:desenvolvimento}
+
+Este capítulo descreve a implementação da ferramenta AuditEdu-XAI, correspondente à atividade de projeto e desenvolvimento da DSR. São apresentados os requisitos, a arquitetura desacoplada, os módulos do pipeline em lote, o contrato de dados, as decisões de desempenho, a interface interativa e o empacotamento para implantação.
+
+% ---------------------------------------------------------------------------
+\section{Requisitos}
+\label{sec:requisitos}
+
+Os requisitos do artefato derivam dos objetivos do trabalho e das restrições de infraestrutura gratuita. Eles são consolidados no Quadro~\ref{qua:requisitos}.
+
+\begin{quadro}[htbp]
+\centering
+\caption{Requisitos funcionais (RF) e não funcionais (RNF) do artefato}
+\label{qua:requisitos}
+\begin{tabular}{|p{1.4cm}|p{13.1cm}|}
+\hline
+\textbf{ID} & \textbf{Descrição} \\ \hline
+RF01 & Selecionar a edição do ENEM (2019, 2020 ou 2021) a ser auditada. \\ \hline
+RF02 & Selecionar o atributo protegido (raça/cor ou renda familiar). \\ \hline
+RF03 & Exibir, por subgrupo, a taxa de seleção, o Impacto Disparate e um alerta visual quando $\mathrm{DI} < 0{,}8$. \\ \hline
+RF04 & Exibir o DI dos rótulos reais, a TPR e a FPR por subgrupo. \\ \hline
+RF05 & Exibir a importância global dos atributos (SHAP \textit{summary plot}). \\ \hline
+RF06 & Exibir a explicação local de um candidato selecionado (SHAP \textit{waterfall plot}). \\ \hline
+RNF01 & Tempo de resposta da interface inferior a 2~s por interação. \\ \hline
+RNF02 & Pipeline em lote executável com até 8~GB de memória RAM. \\ \hline
+RNF03 & Reprodutibilidade integral: toda etapa estocástica usa semente fixa (42). \\ \hline
+RNF04 & Execução da interface em CPU Basic do Hugging Face Spaces (2 vCPUs, 16~GB). \\ \hline
+RNF05 & Portabilidade por contêiner Docker. \\ \hline
+\end{tabular}
+\fonte{Elaborado pelo autor.}
+\end{quadro}
+
+% ---------------------------------------------------------------------------
+\section{Arquitetura Desacoplada}
+\label{sec:arq_visao}
+
+O principal obstáculo de projeto é o custo computacional. Treinar modelos com validação cruzada, calcular valores SHAP para milhares de instâncias e executar 240 retreinamentos no experimento de injeção são tarefas incompatíveis com uma interface que deve responder em menos de dois segundos em um servidor de 2 vCPUs. A solução adotada é uma \textbf{arquitetura desacoplada em duas camadas}, ilustrada na Figura~\ref{fig:arquitetura}:
+\begin{itemize}
+    \item a \textbf{camada offline} executa todo o processamento pesado, em lote e fora do ambiente de produção, e materializa os resultados como arquivos Parquet estáticos;
+    \item a \textbf{camada online} apenas lê e apresenta esses arquivos. Nenhum modelo é treinado e nenhum valor SHAP é calculado em tempo de requisição.
+\end{itemize}
+O contrato entre as camadas resume-se ao conjunto de arquivos em \texttt{data/outputs/}, o que permite evoluir cada uma de forma independente.
+
+\begin{figure}[htbp]
+\centering
+\caption{Arquitetura desacoplada do AuditEdu-XAI}
+\label{fig:arquitetura}
+\begin{tikzpicture}[
+    font=\footnotesize,
+    node distance=4mm and 6mm,
+    mod/.style={draw, rounded corners=2pt, fill=blue!6, minimum width=3.0cm, minimum height=9mm, align=center},
+    store/.style={draw, cylinder, shape border rotate=90, aspect=0.18, fill=gray!10, minimum width=2.6cm, minimum height=10mm, align=center},
+    ui/.style={draw, rounded corners=2pt, fill=green!8, minimum width=3.0cm, minimum height=9mm, align=center},
+    arr/.style={-{Stealth[length=2mm]}, thick},
+]
+% Camada offline
+\node[store] (raw) {Microdados\\ENEM (CSV)};
+\node[mod, right=of raw] (etl) {\texttt{01\_etl}\\chunks + absenteísmo};
+\node[mod, right=of etl] (pre) {\texttt{02\_preprocessing}\\moda, NMG, amostra};
+\node[mod, below=of pre] (trn) {\texttt{03\_trainer}\\XGBoost + GridSearch};
+\node[mod, left=of trn] (aud) {\texttt{04\_audit\_engine}\\teste: DI, TPR, SHAP};
+\node[mod, left=of aud] (inj) {\texttt{05\_bias\_injection}\\validação (240 runs)};
+\node[store, below=8mm of aud] (out) {\texttt{data/outputs/}\\Parquet estático};
+% Camada online
+\node[ui, below=10mm of out] (app) {\texttt{app.py}\\Streamlit (cache)};
+\node[ui, right=of app] (user) {Usuário\\(navegador)};
+\node[draw, dashed, rounded corners, fit=(app)(user), inner sep=3mm, label={[font=\footnotesize\bfseries]below:Contêiner Docker --- Hugging Face Spaces}] (dock) {};
+% Fluxos
+\draw[arr] (raw) -- (etl);
+\draw[arr] (etl) -- (pre);
+\draw[arr] (pre) -- (trn);
+\draw[arr] (trn) -- (aud);
+\draw[arr] (aud) -- (out);
+\draw[arr] (trn.south) |- ++(0,-4mm) -| (inj.south);
+\draw[arr] (inj.south) |- (out.west);
+\draw[arr] (out) -- node[right, font=\scriptsize]{leitura} (app);
+\draw[arr, <->] (app) -- (user);
+% Rótulos das camadas
+\begin{scope}[on background layer]
+\node[draw=blue!40, fill=blue!2, rounded corners, fit=(raw)(etl)(pre)(trn)(aud)(inj)(out), inner sep=3mm, label={[font=\footnotesize\bfseries, anchor=south west]north west:Camada offline (lote)}] {};
+\end{scope}
+\end{tikzpicture}
+\fonte{Elaborado pelo autor.}
+\end{figure}
+
+% ---------------------------------------------------------------------------
+\section{Pipeline em Lote}
+\label{sec:pipeline}
+
+A camada offline é composta por quatro módulos sequenciais, cada um com entrada e saída persistidas em disco, e por dois módulos complementares de validação e medição (Quadro~\ref{qua:modulos}). A persistência intermediária permite reexecutar qualquer etapa isoladamente e inspecionar seus resultados, característica essencial para a rastreabilidade de uma auditoria.
+
+\begin{quadro}[htbp]
+\centering
+\caption{Módulos do pipeline em lote}
+\label{qua:modulos}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{4.1cm}|>{\raggedright\arraybackslash}p{4.0cm}|>{\raggedright\arraybackslash}p{6.4cm}|}
+\hline
+\textbf{Módulo} & \textbf{Entrada $\rightarrow$ Saída} & \textbf{Responsabilidade} \\ \hline
+\texttt{01\_etl.py} & CSV bruto $\rightarrow$ \texttt{raw\_filtered\_\{ano\}} & Leitura em blocos de 100.000 linhas restrita às colunas do contrato; filtro de presença nas quatro provas; conversão de tipos. \\ \hline
+\texttt{02\_preprocessing.py} & \texttt{raw\_filtered} $\rightarrow$ \texttt{sampled\_\{ano\}} & Imputação pela moda, cálculo da NMG, binarização pela mediana populacional e amostragem estratificada de 50.000 registros. \\ \hline
+\texttt{03\_trainer.py} & \texttt{sampled} $\rightarrow$ \texttt{xgboost\_\{ano\}.joblib} & Partição 80/20, \textit{One-Hot Encoding}, \textit{Grid Search} com validação cruzada ($k=5$, AUC-ROC) e persistência do \textit{pipeline} completo. \\ \hline
+\texttt{04\_audit\_engine.py} & modelo + \texttt{sampled} $\rightarrow$ métricas, SHAP & Reprodução do conjunto de teste; métricas de desempenho; DI, DI dos rótulos, TPR e FPR por subgrupo; matriz TreeSHAP nativa. \\ \hline
+\texttt{05\_bias\_injection.py} & modelo + \texttt{sampled} $\rightarrow$ curva de sensibilidade & Experimento de validação (Seção~\ref{sec:injecao}), reutilizando o motor de equidade do módulo 04. \\ \hline
+\texttt{06\_benchmark\_app.py} & \texttt{app.py} $\rightarrow$ tempos de resposta & Medição do requisito RNF01 em modo \textit{headless}. \\ \hline
+\end{tabular}
+\fonte{Elaborado pelo autor.}
+\end{quadro}
+
+O motor de auditoria merece destaque. Para garantir que a auditoria incida apenas sobre dados não vistos no treinamento, o módulo 04 não recebe o conjunto de teste pronto: ele o \textbf{reconstrói} com a mesma função de partição, proporção, estratificação e semente do módulo 03. A correção dessa reconstrução é verificável pela coincidência exata das métricas de desempenho calculadas pelos dois módulos. Os valores SHAP são obtidos pelo TreeSHAP nativo em C++ da própria biblioteca XGBoost, por meio da opção \texttt{pred\_contribs}, sem dependência de \textit{wrappers} externos. O módulo 05 importa a função de cálculo de equidade do módulo 04, de modo que o indicador validado pelo experimento é exatamente o mesmo exibido pela ferramenta.
+
+% ---------------------------------------------------------------------------
+\section{Contrato de Dados}
+\label{sec:contrato}
+
+O contrato de dados de \textbf{entrada}, isto é, as colunas extraídas dos microdados e suas regras de tratamento, foi apresentado no Quadro~\ref{qua:contrato}. O contrato de \textbf{saída}, que constitui a interface entre as camadas offline e online, é descrito no Quadro~\ref{qua:contrato_saida}. Todos os arquivos são Parquet e, salvo indicação, há um arquivo por edição.
+
+\begin{quadro}[htbp]
+\centering
+\caption{Contrato de dados de saída (\texttt{data/outputs/})}
+\label{qua:contrato_saida}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{4.8cm}|>{\raggedright\arraybackslash}p{9.7cm}|}
+\hline
+\textbf{Arquivo} & \textbf{Conteúdo (colunas principais)} \\ \hline
+\texttt{model\_metrics\_\{ano\}} & Acurácia, precisão, recall, F1, AUC-ROC, hiperparâmetros selecionados e valor base SHAP. \\ \hline
+\texttt{fairness\_metrics\_\{ano\}} & Uma linha por subgrupo de cada atributo protegido: \textit{n}, taxa de seleção, grupo de referência, DI, alerta, taxa-base real, DI dos rótulos, amplificação, TPR, FPR e suas diferenças em relação à referência. \\ \hline
+\texttt{shap\_values\_\{ano\}} & Matriz $10.000 \times 46$ de valores SHAP (log-odds), identificador da linha na amostra e valor base. \\ \hline
+\texttt{shap\_features\_\{ano\}} & Matriz binária dos atributos codificados, alinhada linha a linha à matriz SHAP. \\ \hline
+\texttt{bias\_injection\_runs} & Uma linha por execução do experimento (240): grupo, cenário, intensidade, repetição e indicadores resultantes. \\ \hline
+\texttt{bias\_injection\_summary} & Médias e desvios por cenário, variação em relação à linha de base e efeito líquido. \\ \hline
+\texttt{app\_benchmark} & Tempos de execução da interface por edição, atributo e modo (primeira carga ou interação). \\ \hline
+\end{tabular}
+\fonte{Elaborado pelo autor.}
+\end{quadro}
+
+% ---------------------------------------------------------------------------
+\section{Decisões de Desempenho}
+\label{sec:desempenho}
+
+As decisões de engenharia voltadas ao desempenho atuam em três níveis.
+
+\textbf{Ingestão.} A leitura em blocos e a seleção antecipada de colunas limitam o uso de memória durante o processamento de arquivos com até 2,3~GB. A conversão das notas para \texttt{float32}, das variáveis-alvo para \texttt{uint8} e das categóricas para o tipo \texttt{category} reduz o volume em memória.
+
+\textbf{Armazenamento.} O formato colunar Apache Parquet \cite{parquet2026} armazena os dados comprimidos e permite ler apenas as colunas necessárias. Os artefatos consumidos pela interface ocupam menos de 1~MB por edição (Tabela~\ref{tab:app_benchmark}), o que permite incluí-los diretamente na imagem de implantação.
+
+\textbf{Apresentação.} A interface aplica dois níveis de cache do Streamlit \cite{streamlit2026}. O primeiro guarda os Parquets de cada edição, lidos uma única vez. O segundo guarda o \textit{summary plot} SHAP, que posiciona 10.000 pontos para cada um dos 46 atributos e é a operação mais cara da página: ele é renderizado uma única vez por edição e reutilizado como imagem. Durante o desenvolvimento, a medição de desempenho mostrou que, sem esse segundo nível, o gráfico era redesenhado a cada interação e mantinha o tempo de resposta próximo do limite de 2~s, mesmo com os dados já em cache.
+
+O requisito RNF01 foi verificado pelo módulo \texttt{06\_benchmark\_app.py}, que executa a interface completa em modo \textit{headless} para cada combinação de edição e atributo: uma primeira carga com o cache vazio e cinco interações subsequentes. Os resultados constam da Tabela~\ref{tab:app_benchmark}. A primeira carga de cada edição leva entre 1,32~s e 1,37~s. As interações seguintes levam, em média, entre 0,040~s e 0,067~s, com máximo de 0,153~s. Todas as 36 execuções ficaram abaixo do limite de 2~s.
+
+\input{tabelas/tab_app_benchmark}
+
+% ---------------------------------------------------------------------------
+\section{Interface Interativa}
+\label{sec:interface}
+
+A camada online foi implementada com o \textit{framework} Streamlit \cite{streamlit2026}, que permite construir aplicações de dados em Python sem desenvolvimento \textit{front-end} dedicado. A interface organiza-se em uma barra lateral de parâmetros e dois painéis.
+
+\textbf{Barra lateral.} Contém dois seletores, um para a edição do ENEM (RF01) e outro para o atributo protegido (RF02). Qualquer alteração reexecuta a página com os dados da seleção.
+
+\textbf{Painel 1 --- Equidade algorítmica.} Apresenta três indicadores-resumo: o menor DI entre os subgrupos, sinalizado como ``Viés Detectado'' quando inferior a 0,8; o grupo de referência; e o limiar da regra. Em seguida, uma tabela exibe, por subgrupo, o total de candidatos, as predições positivas, a taxa de seleção, o DI (com destaque em vermelho para valores abaixo de 0,8), o DI dos rótulos reais, a TPR, a FPR e o alerta de viés (RF03 e RF04). Um gráfico de barras das taxas de seleção, com uma linha tracejada em 80\% da taxa de referência, permite identificar visualmente os grupos em situação de impacto adverso.
+
+\textbf{Painel 2 --- Explicabilidade.} Organiza-se em duas abas. A aba global exibe o \textit{summary plot} SHAP (RF05), no qual cada ponto é um candidato, a posição horizontal indica a contribuição do atributo e a cor indica seu valor. A aba local permite escolher um candidato pelo índice e exibe um \textit{waterfall plot} interativo (RF06), que decompõe sua predição, partindo do valor base, nas contribuições de cada atributo. Esse recurso materializa o tipo de explicação individual previsto no Art.~20 da LGPD \cite{brasil2018lgpd}.
+
+% Sugestão ao autor: inserir aqui capturas de tela do painel (Figura: Painel de equidade; Figura: Painel SHAP),
+% salvas em figuras/dashboard_*.png, com \fonte{Elaborado pelo autor.}
+
+% ---------------------------------------------------------------------------
+\section{Empacotamento e Implantação}
+\label{sec:docker}
+
+A camada online é distribuída como uma imagem Docker \cite{merkel2014docker}, construída em dois estágios (\textit{multi-stage build}), conforme o Quadro~\ref{qua:docker}. O estágio \textit{builder} instala as dependências em um ambiente virtual isolado. O estágio \textit{runner} parte de uma imagem base limpa e recebe apenas esse ambiente, a interface e os Parquets, de modo que ferramentas de instalação e caches não chegam à imagem final.
+
+\begin{quadro}[htbp]
+\centering
+\caption{Estrutura da imagem Docker da camada online}
+\label{qua:docker}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{11.3cm}|}
+\hline
+\textbf{Elemento} & \textbf{Decisão} \\ \hline
+Imagem base & \texttt{python:3.12-slim}, nos dois estágios. \\ \hline
+Estágio \textit{builder} & Cria \texttt{/opt/venv} e instala \texttt{requirements-app.txt}, que contém somente as dependências da interface, com versões fixadas idênticas às validadas localmente. \\ \hline
+Estágio \textit{runner} & Copia \texttt{/opt/venv}, \texttt{app.py} e \texttt{data/outputs/}; executa como usuário não privilegiado (UID 1000), exigência do Hugging Face Spaces. \\ \hline
+Configuração & Porta 7860; servidor Streamlit \textit{headless}; limite de duas \textit{threads} numéricas, compatível com 2 vCPUs; diretórios de cache graváveis para as bibliotecas de visualização. \\ \hline
+Contexto de \textit{build} & Arquivo \texttt{.dockerignore} em modo de lista de permissão, que exclui os microdados brutos (aproximadamente 5,7~GB), modelos e o texto da monografia. \\ \hline
+Monitoramento & Verificação de saúde (\textit{health check}) periódica no \textit{endpoint} nativo do Streamlit. \\ \hline
+\end{tabular}
+\fonte{Elaborado pelo autor.}
+\end{quadro}
+
+O ambiente-alvo é o Hugging Face Spaces com SDK Docker, na configuração gratuita CPU Basic (2 vCPUs e 16~GB de memória). Como a imagem contém apenas a camada online, o pipeline em lote é executado localmente e seus resultados são versionados com o repositório. Para atualizar a ferramenta com novas edições do ENEM, basta reexecutar o pipeline e reconstruir a imagem.
+
+% ---------------------------------------------------------------------------
+\section{Reprodutibilidade}
+\label{sec:reprodutibilidade}
+
+A reprodutibilidade foi tratada como requisito (RNF03), e não como consequência. Todas as etapas estocásticas usam a semente 42 ou geradores dela derivados. Os parâmetros fixos do projeto estão documentados em um contrato de dados versionado no repositório. Além disso, as tabelas e figuras do Capítulo~\ref{cap:resultados} não são transcritas manualmente: um \textit{script} lê os arquivos Parquet e gera o código \LaTeX\ correspondente. Assim, a sequência ``executar o pipeline, gerar as tabelas e compilar o documento'' reproduz integralmente os números apresentados nesta monografia, e qualquer divergência entre texto e artefato torna-se detectável.

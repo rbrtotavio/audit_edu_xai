@@ -1,0 +1,63 @@
+\chapter{Conclusão}
+\label{cap:conclusao}
+
+Este trabalho partiu da constatação de que modelos preditivos treinados com microdados do ENEM, embora aparentemente neutros e de desempenho aceitável, podem converter desigualdades socioeconômicas e raciais em critérios automatizados de exclusão, sem que as métricas convencionais de avaliação revelem o problema. Para enfrentá-lo, foi projetada, desenvolvida e avaliada, segundo a \textit{Design Science Research}, a ferramenta AuditEdu-XAI. A ferramenta integra métricas de justiça algorítmica e explicabilidade baseada em valores de Shapley em uma arquitetura desacoplada, executável em infraestrutura gratuita.
+
+% ---------------------------------------------------------------------------
+\section{Atendimento aos Objetivos}
+
+O objetivo geral foi atingido: a ferramenta detecta, quantifica e explica vieses em modelos preditivos de desempenho educacional. Os objetivos específicos foram cumpridos da seguinte forma:
+\begin{itemize}
+    \item \textbf{Pipeline de dados:} os módulos de ingestão e pré-processamento processam os microdados de três edições em blocos e persistem os resultados em Parquet, dentro do limite de memória estabelecido (Capítulo~\ref{cap:desenvolvimento});
+    \item \textbf{Modelo-alvo:} classificadores XGBoost foram otimizados por validação cruzada e avaliados em conjunto de teste isolado, com AUC-ROC em torno de 0,75 (Seção~\ref{sec:res_desempenho});
+    \item \textbf{Motor de equidade:} o artefato calcula Paridade Demográfica, Impacto Disparate, DI dos rótulos reais, TPR e FPR exclusivamente sobre dados não vistos no treinamento (Seções~\ref{sec:res_raca} a~\ref{sec:res_amplificacao});
+    \item \textbf{Explicabilidade:} a camada TreeSHAP quantifica a contribuição de cada atributo, global e localmente (Seção~\ref{sec:res_shap});
+    \item \textbf{Interface:} o painel Streamlit atende a todos os requisitos funcionais com tempo de resposta inferior a 2~s em todas as execuções medidas (Seção~\ref{sec:desempenho});
+    \item \textbf{Validação:} o experimento de injeção sintética de viés confirmou as três hipóteses de sensibilidade, especificidade e cegueira das métricas convencionais (Seção~\ref{sec:res_injecao}).
+\end{itemize}
+
+% ---------------------------------------------------------------------------
+\section{Contribuições}
+
+As contribuições do trabalho situam-se em três dimensões.
+
+\textbf{Contribuição tecnológica.} Um artefato de código aberto que combina, em um mesmo fluxo, métricas de equidade de grupo, decomposição do viés entre dados e modelo, explicações TreeSHAP e uma interface acessível a usuários sem formação em programação. Sua arquitetura desacoplada, com pré-cálculo em lote e leitura de arquivos estáticos, demonstra que a auditoria algorítmica pode ser oferecida em infraestrutura de custo nulo. O padrão é replicável para outras bases públicas.
+
+\textbf{Contribuição empírica.} A aplicação aos dados de 2019 a 2021 produziu três achados substantivos:
+\begin{itemize}
+    \item um modelo com desempenho moderado viola a regra dos quatro quintos para todos os grupos não brancos e para candidatos com renda familiar de até 2,5 salários mínimos, nas três edições;
+    \item o modelo \textbf{amplifica} a disparidade presente nos dados, chegando a criar impacto adverso em grupos que satisfaziam a regra nos rótulos reais;
+    \item a ausência de computador na residência é o atributo mais influente nas predições, e sua importância cresce ao longo do período da pandemia, o que sugere o agravamento da exclusão digital como determinante do desempenho.
+\end{itemize}
+
+\textbf{Contribuição metodológica.} Um protocolo de validação por injeção de viés com controle negativo pareado e efeito líquido, que separa o efeito do viés direcionado do efeito genérico de alterar a prevalência de rótulos. O protocolo evidenciou que, sob um viés que leva o DI de um grupo a praticamente zero, a AUC-ROC varia no máximo 0,032, e para grupos pequenos não varia. Esse resultado mostra concretamente por que a avaliação de modelos aplicados a populações heterogêneas não pode se limitar a métricas agregadas de desempenho.
+
+% ---------------------------------------------------------------------------
+\section{Limitações}
+
+As limitações, detalhadas na Seção~\ref{sec:res_limitacoes}, podem ser resumidas em cinco pontos:
+\begin{itemize}
+    \item o pequeno número de candidatos indígenas no conjunto de teste, que torna suas métricas instáveis;
+    \item a auditoria de um único tipo de modelo, que usa o atributo raça/cor diretamente;
+    \item a natureza associativa, e não causal, dos valores SHAP;
+    \item a dicotomização do desempenho pela mediana;
+    \item a comparabilidade limitada entre edições, decorrente da variação do salário mínimo e da composição dos participantes.
+\end{itemize}
+
+% ---------------------------------------------------------------------------
+\section{Trabalhos Futuros}
+
+Os resultados abrem as seguintes linhas de continuidade:
+\begin{itemize}
+    \item \textbf{Incerteza estatística:} incorporar intervalos de confiança por \textit{bootstrap} \cite{efron1993bootstrap} às métricas de equidade, priorizando grupos pequenos;
+    \item \textbf{Viés por variáveis \textit{proxy}:} auditar um modelo treinado \textbf{sem} o atributo raça/cor, para medir quanto da disparidade persiste por meio de variáveis correlacionadas \cite{dwork2012fairness};
+    \item \textbf{Mitigação:} integrar técnicas de pré-processamento, como a reponderação de instâncias \cite{kamiran2012data}, e de pós-processamento, como limiares por grupo \cite{hardt2016equality}, e exibir o \textit{trade-off} entre desempenho e equidade na própria interface;
+    \item \textbf{Interseccionalidade:} avaliar subgrupos definidos pela combinação de atributos, como raça/cor e renda, nos quais disparidades podem ser maiores que as observadas em cada atributo isolado \cite{buolamwini2018gender};
+    \item \textbf{Generalização:} estender a auditoria a outras famílias de modelos, a novas edições do ENEM e a outras bases educacionais públicas, como o SAEB e o Censo Escolar;
+    \item \textbf{Interface:} incorporar ao painel os resultados do experimento de injeção e a comparação entre edições, e realizar a implantação pública contínua da imagem Docker.
+\end{itemize}
+
+% ---------------------------------------------------------------------------
+\section{Considerações Finais}
+
+A adoção de modelos preditivos na gestão educacional é uma tendência, e a regulação brasileira caminha para exigir dos sistemas de alto risco avaliações de impacto algorítmico e mecanismos de explicação \cite{brasil2018lgpd, brasil2023pl2338}. Os resultados deste trabalho indicam que tais exigências são necessárias. Um modelo pode parecer adequado por todas as métricas usuais e, ainda assim, excluir sistematicamente os grupos que mais dependem de políticas educacionais justas. A ferramenta desenvolvida torna essa exclusão visível, mensurável e explicável, e, ao fazê-lo, oferece a gestores, pesquisadores e órgãos de controle um instrumento concreto para que a promessa de decisões orientadas a dados não se converta em desigualdade automatizada.

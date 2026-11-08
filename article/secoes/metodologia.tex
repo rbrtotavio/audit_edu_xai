@@ -1,0 +1,211 @@
+\chapter{Metodologia}
+\label{cap:metodologia}
+
+Este capítulo descreve os procedimentos metodológicos, as técnicas de engenharia de dados e os protocolos experimentais mobilizados para a concepção, o desenvolvimento e a validação da ferramenta de auditoria algorítmica proposta. A pesquisa caracteriza-se como aplicada, de abordagem quantitativa e natureza exploratória, orientada à construção e à avaliação de um artefato tecnológico voltado a um problema real de justiça algorítmica em dados educacionais.
+
+% ---------------------------------------------------------------------------
+\section{Abordagem de Pesquisa: \textit{Design Science Research}}
+\label{sec:dsr}
+
+O ciclo de vida do trabalho é conduzido segundo a metodologia de \textit{Design Science Research} (DSR) proposta por \citeonline{peffers2007design}, padrão consolidado na pesquisa em Sistemas de Informação para a criação e a avaliação de artefatos. O processo de \citeonline{peffers2007design} organiza-se em seis atividades, cujo mapeamento para o presente trabalho é apresentado no Quadro~\ref{qua:dsr}.
+
+\begin{quadro}[htbp]
+\centering
+\caption{Mapeamento das atividades da DSR para o presente trabalho}
+\label{qua:dsr}
+\begin{tabular}{|p{4.2cm}|p{10.3cm}|}
+\hline
+\textbf{Atividade DSR} & \textbf{Realização neste trabalho} \\ \hline
+1. Identificação do problema e motivação & Modelos preditivos treinados com microdados do ENEM podem reproduzir e amplificar desigualdades de raça/cor e renda sem que métricas convencionais de desempenho o revelem (Capítulo~\ref{cap:introducao}). \\ \hline
+2. Definição dos objetivos da solução & Quantificar disparidades (Impacto Disparate, Paridade Demográfica, \textit{Equal Opportunity}), explicar suas origens (SHAP) e operar em infraestrutura computacional restrita. \\ \hline
+3. Projeto e desenvolvimento & Pipeline em lote de quatro módulos (ingestão, pré-processamento, treinamento e motor de auditoria) e interface interativa desacoplada (Seção~\ref{sec:arquitetura}). \\ \hline
+4. Demonstração & Aplicação do artefato aos microdados das edições de 2019, 2020 e 2021 do ENEM (Capítulo~\ref{cap:resultados}). \\ \hline
+5. Avaliação & Experimento controlado de injeção sintética de viés com controle negativo, para medir a sensibilidade dos indicadores (Seção~\ref{sec:injecao}). \\ \hline
+6. Comunicação & Esta monografia, o código-fonte aberto e o painel interativo. \\ \hline
+\end{tabular}
+\fonte{Adaptado de \citeonline{peffers2007design}.}
+\end{quadro}
+
+% ---------------------------------------------------------------------------
+\section{Fonte e Tratamento dos Dados}
+\label{sec:dados}
+
+\subsection{Microdados do ENEM}
+
+O artefato é alimentado pelos microdados públicos e anonimizados do Exame Nacional do Ensino Médio, disponibilizados pelo Instituto Nacional de Estudos e Pesquisas Educacionais Anísio Teixeira \cite{inep2022microdados}, referentes às edições de \textbf{2019, 2020 e 2021}. O recorte temporal abrange a última edição anterior à pandemia de COVID-19 (2019), a edição aplicada em meio à suspensão das aulas presenciais (2020, com provas realizadas em janeiro e fevereiro de 2021) e a edição subsequente ao período mais agudo do ensino remoto (2021).
+
+Do arquivo de participantes de cada edição são extraídas exclusivamente as colunas descritas no Quadro~\ref{qua:contrato}, que constitui o contrato de dados do pipeline.
+
+\begin{quadro}[htbp]
+\centering
+\caption{Contrato de dados: variáveis extraídas dos microdados do ENEM}
+\label{qua:contrato}
+\begin{tabular}{|p{4.6cm}|p{3.4cm}|p{6.5cm}|}
+\hline
+\textbf{Variável} & \textbf{Papel} & \textbf{Domínio} \\ \hline
+\texttt{TP\_PRESENCA\_CN/CH/LC/MT} & Filtro de absenteísmo & 1 = presente na prova \\ \hline
+\texttt{NU\_NOTA\_CN/CH/LC/MT/ REDACAO} & Construção da variável-alvo & Notas das quatro áreas e da redação \\ \hline
+\texttt{TP\_COR\_RACA} & Atributo protegido e preditor & 0 Não declarada; 1 Branca; 2 Preta; 3 Parda; 4 Amarela; 5 Indígena \\ \hline
+\texttt{Q006} & Atributo protegido e preditor & Renda familiar mensal, faixas A (nenhuma renda) a Q (acima de 20 salários mínimos) \\ \hline
+\texttt{Q001} / \texttt{Q002} & Preditor & Escolaridade do pai / da mãe \\ \hline
+\texttt{Q024} & Preditor & Computador na residência (A = não possui) \\ \hline
+\texttt{Q025} & Preditor & Acesso à internet na residência (A = não; B = sim) \\ \hline
+\end{tabular}
+\fonte{Elaborado pelo autor a partir do dicionário de dados do INEP.}
+\end{quadro}
+
+\subsection{Ingestão em Lote}
+
+Os arquivos de participantes ocupam entre 1,5~GB e 2,3~GB por edição. Para respeitar o limite de 8~GB de memória do ambiente de execução, a leitura é realizada em blocos (\textit{chunks}) de 100.000 linhas, restrita às colunas do contrato de dados. Em cada bloco, as notas são convertidas para o tipo \texttt{float32}, e o resultado consolidado é persistido no formato colunar comprimido Apache Parquet, que reduz substancialmente o custo de leitura nas etapas subsequentes.
+
+\subsection{Filtragem de Absenteísmo}
+
+São mantidos apenas os participantes presentes nas quatro provas objetivas, isto é, com \texttt{TP\_PRESENCA\_CN}, \texttt{TP\_PRESENCA\_CH}, \texttt{TP\_PRESENCA\_LC} e \texttt{TP\_PRESENCA\_MT} iguais a 1. A ausência de nota decorrente do não comparecimento não expressa desempenho cognitivo, de modo que sua imputação introduziria distorções na distribuição da variável-alvo. Como a redação é aplicada no mesmo dia da prova de Linguagens e Códigos, notas zero na redação de participantes presentes refletem anulação ou desempenho e são mantidas. Após o filtro, restam 3.701.910 participantes em 2019, 2.588.681 em 2020 e 2.238.107 em 2021.
+
+\subsection{Tratamento de Dados Ausentes}
+
+Valores ausentes nas variáveis categóricas do questionário socioeconômico são imputados pela moda de cada coluna, calculada sobre a população filtrada da respectiva edição, preservando a distribuição das respostas.
+
+\subsection{Definição da Variável-Alvo}
+
+O desempenho de cada participante é sintetizado pela Nota Média Geral (NMG), média aritmética simples das cinco notas:
+\begin{equation}
+\mathrm{NMG} = \frac{N_{\mathrm{CN}} + N_{\mathrm{CH}} + N_{\mathrm{LC}} + N_{\mathrm{MT}} + N_{\mathrm{RED}}}{5},
+\label{eq:nmg}
+\end{equation}
+em que $N_{\mathrm{CN}}$, $N_{\mathrm{CH}}$, $N_{\mathrm{LC}}$, $N_{\mathrm{MT}}$ e $N_{\mathrm{RED}}$ denotam, respectivamente, as notas de Ciências da Natureza, Ciências Humanas, Linguagens e Códigos, Matemática e Redação.
+
+Para viabilizar a classificação binária, a NMG é dicotomizada pela mediana $\tilde{m}_a$ da população filtrada de cada edição $a$, calculada \textbf{antes} da amostragem, de modo a refletir o desempenho mediano real do exame naquele ano:
+\begin{equation}
+Y = \begin{cases} 1, & \text{se } \mathrm{NMG} \geq \tilde{m}_a,\\ 0, & \text{caso contrário.} \end{cases}
+\label{eq:alvo}
+\end{equation}
+Por construção, as classes resultam aproximadamente balanceadas.
+
+\subsection{Amostragem Estratificada}
+
+Para viabilizar o treinamento com validação cruzada, o cálculo dos valores de Shapley e o experimento de injeção de viés em infraestrutura restrita, extrai-se de cada edição uma amostra aleatória de \textbf{50.000 participantes}, estratificada pelo atributo protegido \texttt{TP\_COR\_RACA}, com semente pseudoaleatória fixa igual a 42. A estratificação garante que a proporção de cada grupo de raça/cor na amostra reproduza a da população, preservando a representação dos grupos minoritários.
+
+% ---------------------------------------------------------------------------
+\section{Modelo-Alvo da Auditoria}
+\label{sec:modelo}
+
+O objeto da auditoria é um classificador XGBoost \cite{chen2016xgboost}, algoritmo de \textit{gradient boosting} sobre árvores de decisão amplamente adotado em dados tabulares. O modelo recebe as seis variáveis socioeconômicas do Quadro~\ref{qua:contrato} (\texttt{TP\_COR\_RACA}, \texttt{Q006}, \texttt{Q001}, \texttt{Q002}, \texttt{Q024} e \texttt{Q025}), codificadas por \textit{One-Hot Encoding} em 46 variáveis binárias.
+
+A inclusão deliberada do atributo raça/cor como preditor simula um modelo construído sem salvaguardas de equidade, cenário em que a auditoria é mais necessária, e permite à camada de explicabilidade quantificar o uso direto desse atributo pelo modelo.
+
+Cada amostra anual é particionada de forma estratificada pela variável-alvo em \textbf{80\% para treinamento (40.000 registros) e 20\% para teste (10.000 registros)}, com semente 42. Os hiperparâmetros são selecionados por \textit{Grid Search} com validação cruzada em cinco partições ($k=5$) realizada \textbf{exclusivamente no conjunto de treinamento}, adotando a área sob a curva ROC (AUC-ROC) como critério de seleção. A grade explorada compreende o número de árvores $\{50, 100\}$, a profundidade máxima $\{3, 5\}$ e a taxa de aprendizado $\{0{,}05;\ 0{,}1\}$. A configuração vencedora é reajustada sobre todo o conjunto de treinamento e avaliada no conjunto de teste pelas métricas de acurácia, precisão, revocação (\textit{recall}), F1 e AUC-ROC \cite{hastie2009elements}. O conjunto de teste não participa de nenhuma decisão de modelagem.
+
+% ---------------------------------------------------------------------------
+\section{Protocolo de Auditoria}
+\label{sec:auditoria}
+
+\subsection{Isolamento do Conjunto de Teste}
+
+Toda a auditoria (métricas de equidade e valores SHAP) é calculada \textbf{exclusivamente sobre o conjunto de teste} de cada edição, composto por 10.000 participantes não vistos durante o treinamento. Para tanto, o motor de auditoria reproduz deterministicamente a mesma partição do treinamento (proporção de 20\%, estratificação pela variável-alvo e semente 42). A reprodução é verificada pela coincidência exata entre as métricas de desempenho obtidas no treinamento e na auditoria.
+
+Esse isolamento evita que o diagnóstico de viés seja contaminado por exemplos memorizados pelo modelo, cujas predições tendem a ser artificialmente próximas dos rótulos e subestimariam as disparidades que o classificador produziria em operação. Cada registro auditado mantém o identificador da linha na amostra original, assegurando a rastreabilidade entre predições, explicações e dados de entrada.
+
+\subsection{Métricas de Equidade Algorítmica}
+
+Seja $\hat{Y}$ a predição do modelo, $Y$ o rótulo real e $G$ um atributo protegido (raça/cor ou faixa de renda) com subgrupos $g$. A \textbf{taxa de seleção} do subgrupo $g$ é a proporção de predições positivas:
+\begin{equation}
+\mathrm{TS}_g = P(\hat{Y} = 1 \mid G = g).
+\label{eq:ts}
+\end{equation}
+
+O critério de \textbf{Paridade Demográfica} exige que a taxa de seleção independa do grupo, isto é, $\mathrm{TS}_g = \mathrm{TS}_{g'}$ para todo par de subgrupos. O grau de violação é medido pelo \textbf{Impacto Disparate} (DI) \cite{feldman2015certifying}, razão entre a taxa de seleção de cada subgrupo e a de um grupo de referência $r$:
+\begin{equation}
+\mathrm{DI}_g = \frac{\mathrm{TS}_g}{\mathrm{TS}_r}, \qquad r = \arg\max_{g}\ \mathrm{TS}_g.
+\label{eq:di}
+\end{equation}
+O grupo de referência é determinado empiricamente como o subgrupo de maior taxa de seleção, de modo que $\mathrm{DI}_g \in [0, 1]$. Adota-se a regra dos quatro quintos \cite{eeoc1978uniform}: valores de $\mathrm{DI}_g < 0{,}8$ disparam um alerta de impacto adverso contra o subgrupo $g$.
+
+Para distinguir o viés já presente nos dados daquele produzido pelo modelo, calcula-se também o DI dos \textbf{rótulos reais}, substituindo $\hat{Y}$ por $Y$ na Equação~\eqref{eq:ts}, e a respectiva diferença:
+\begin{equation}
+\mathrm{DI}^{(y)}_g = \frac{P(Y=1 \mid G=g)}{P(Y=1 \mid G=r)}, \qquad \Delta_g = \mathrm{DI}_g - \mathrm{DI}^{(y)}_g.
+\label{eq:amplificacao}
+\end{equation}
+Valores $\Delta_g < 0$ indicam que o classificador \textbf{amplifica} a disparidade existente nos dados históricos.
+
+A Paridade Demográfica ignora se as predições estão corretas. Por isso, o artefato incorpora o critério de \textbf{Igualdade de Oportunidades} (\textit{Equal Opportunity}) \cite{hardt2016equality}, que exige taxas de verdadeiros positivos (TPR) iguais entre os grupos, e reporta também a taxa de falsos positivos (FPR), que, junto à TPR, compõe o critério de \textit{Equalized Odds}:
+\begin{align}
+\mathrm{TPR}_g &= P(\hat{Y} = 1 \mid Y = 1, G = g), \label{eq:tpr}\\
+\mathrm{FPR}_g &= P(\hat{Y} = 1 \mid Y = 0, G = g). \label{eq:fpr}
+\end{align}
+A violação é quantificada pela diferença $\mathrm{TPR}_g - \mathrm{TPR}_r$ e pela razão $\mathrm{TPR}_g / \mathrm{TPR}_r$ em relação ao mesmo grupo de referência da Equação~\eqref{eq:di}. No contexto do ENEM, uma $\mathrm{TPR}_g$ baixa significa que, entre os candidatos do grupo $g$ que efetivamente obtiveram NMG igual ou superior à mediana, poucos são reconhecidos pelo modelo.
+
+\subsection{Explicabilidade via TreeSHAP}
+
+A explicação das predições baseia-se nos valores de Shapley da teoria dos jogos cooperativos, conforme o arcabouço SHAP de \citeonline{lundberg2017unified}. Para um modelo $f$ e um conjunto $F$ de $M$ atributos, a contribuição do atributo $i$ para a predição de uma instância $x$ é:
+\begin{equation}
+\phi_i(f, x) = \sum_{S \subseteq F \setminus \{i\}} \frac{|S|!\,(M - |S| - 1)!}{M!} \left[ f_x(S \cup \{i\}) - f_x(S) \right],
+\label{eq:shapley}
+\end{equation}
+em que $f_x(S)$ é a saída esperada do modelo condicionada aos atributos do subconjunto $S$. Os valores satisfazem a propriedade de aditividade local:
+\begin{equation}
+f(x) = \phi_0 + \sum_{i=1}^{M} \phi_i(f, x),
+\label{eq:aditividade}
+\end{equation}
+sendo $\phi_0$ o valor base (saída média do modelo). Como o XGBoost produz escores em escala log-odds, os valores $\phi_i$ expressam contribuições nessa escala.
+
+O cálculo exato é obtido em tempo polinomial pelo algoritmo TreeSHAP \cite{lundberg2020local}, executado pelo motor nativo em C++ da própria biblioteca XGBoost. Duas visões são produzidas: a \textbf{importância global} de cada atributo, dada pela média do valor absoluto sobre as $n$ instâncias de teste,
+\begin{equation}
+I_i = \frac{1}{n}\sum_{j=1}^{n} \left| \phi_i(f, x_j) \right|,
+\label{eq:importancia}
+\end{equation}
+apresentada em gráficos de resumo (\textit{summary plots}); e a \textbf{explicação local}, que decompõe a predição de um candidato individual a partir de $\phi_0$ em gráficos de cascata (\textit{waterfall plots}).
+
+% ---------------------------------------------------------------------------
+\section{Validação por Injeção Sintética de Viés}
+\label{sec:injecao}
+
+Em dados reais, a magnitude verdadeira do viés é desconhecida, o que impede verificar diretamente se os indicadores do artefato o medem corretamente. Para avaliar a \textbf{sensibilidade} da ferramenta (atividade de avaliação da DSR), adota-se um experimento controlado em que um viés de magnitude conhecida é deliberadamente inserido nos rótulos de treinamento, simulando discriminação histórica nos dados \cite{wick2019unlocking}.
+
+\subsection{Mecanismo de Injeção}
+
+Seja $\mathcal{D}_{\text{treino}}$ o conjunto de treinamento de uma edição, $g^{*}$ o grupo-alvo e $\mathcal{P}_{g^{*}} = \{ j \in \mathcal{D}_{\text{treino}} : G_j = g^{*},\ Y_j = 1 \}$ o conjunto de seus rótulos positivos. Para uma intensidade $p$, sorteia-se uniformemente, sem reposição, um subconjunto $\mathcal{F} \subseteq \mathcal{P}_{g^{*}}$ com $|\mathcal{F}| = \operatorname{round}(p \cdot |\mathcal{P}_{g^{*}}|)$, cujos rótulos são rebaixados:
+\begin{equation}
+\tilde{Y}_j = \begin{cases} 0, & \text{se } j \in \mathcal{F},\\ Y_j, & \text{caso contrário.} \end{cases}
+\label{eq:injecao}
+\end{equation}
+
+\subsection{Controle Negativo}
+
+Rebaixar rótulos reduz a prevalência global de positivos, o que, por si só, pode alterar as taxas de seleção. Para separar o efeito do viés \textbf{direcionado} desse efeito genérico, cada cenário de injeção é pareado com um cenário de controle, no qual o \textbf{mesmo número} $|\mathcal{F}|$ de rótulos é rebaixado por sorteio entre todos os positivos do treinamento, independentemente do grupo. O efeito líquido atribuível ao direcionamento é:
+\begin{equation}
+\mathrm{EL}_{g^{*}}(p) = \left[\mathrm{DI}^{\text{inj}}_{g^{*}}(p) - \mathrm{DI}_{g^{*}}(0)\right] - \left[\mathrm{DI}^{\text{ctrl}}_{g^{*}}(p) - \mathrm{DI}_{g^{*}}(0)\right].
+\label{eq:efeito_liquido}
+\end{equation}
+
+\subsection{Desenho Experimental}
+
+\begin{itemize}
+    \item \textbf{Grupos-alvo:} Parda, o maior grupo não branco, e Indígena, o menor grupo e o de menor taxa de seleção, de modo a avaliar a ferramenta em grupos de tamanhos contrastantes;
+    \item \textbf{Intensidades:} $p \in \{0\%, 10\%, 25\%, 50\%\}$;
+    \item \textbf{Cenários:} injeção direcionada e controle negativo;
+    \item \textbf{Repetições:} cinco por combinação, com geradores pseudoaleatórios derivados deterministicamente da semente 42, da edição, do grupo, da intensidade, do cenário e da repetição;
+    \item \textbf{Retreinamento:} o modelo é reajustado sobre $(\mathcal{D}_{\text{treino}}, \tilde{Y})$ com os \textbf{mesmos hiperparâmetros} do modelo de produção, sem nova busca em grade, de forma a isolar o efeito da injeção;
+    \item \textbf{Avaliação:} sobre o conjunto de teste \textbf{original}, com rótulos não alterados, utilizando o mesmo motor de equidade da auditoria principal. Registram-se o DI, a TPR e a FPR do grupo-alvo, o valor SHAP médio da variável indicadora do grupo entre seus membros, a acurácia e a AUC-ROC.
+\end{itemize}
+
+O desenho totaliza $3 \text{ edições} \times 2 \text{ grupos} \times 4 \text{ intensidades} \times 2 \text{ cenários} \times 5 \text{ repetições} = 240$ execuções. São testadas três hipóteses:
+\begin{description}
+    \item[H1 (sensibilidade):] no cenário de injeção, o DI médio do grupo-alvo decresce monotonicamente com $p$;
+    \item[H2 (especificidade):] a queda do DI no controle negativo é substancialmente menor que na injeção, ou seja, $\mathrm{EL}_{g^{*}}(p) < 0$;
+    \item[H3 (cegueira das métricas convencionais):] a AUC-ROC varia pouco entre as intensidades, evidenciando que métricas agregadas de desempenho não detectam o viés introduzido.
+\end{description}
+
+% ---------------------------------------------------------------------------
+\section{Arquitetura e Ambiente Computacional}
+\label{sec:arquitetura}
+
+A ferramenta adota uma arquitetura desacoplada em duas camadas. A \textbf{camada offline} executa, em lote e em ordem fixa, os módulos de ingestão, pré-processamento, treinamento, auditoria e injeção de viés, exportando todos os resultados (métricas de desempenho, métricas de equidade, matrizes SHAP e resultados do experimento de injeção) como arquivos Parquet estáticos. A \textbf{camada online}, implementada com o \textit{framework} Streamlit, apenas lê esses arquivos e os apresenta interativamente, permitindo selecionar a edição e o atributo protegido sem recomputar modelos ou explicações em tempo de requisição. Os detalhes de implementação são apresentados no Capítulo~\ref{cap:desenvolvimento}.
+
+O pipeline foi implementado em Python~3.12 com as bibliotecas pandas~2.3.3, PyArrow, scikit-learn~1.9.1, XGBoost~3.4.1 e SHAP~0.49.1. Todas as etapas estocásticas (amostragem, partição treino/teste, validação cruzada, treinamento e injeção de viés) utilizam a semente 42 ou geradores dela derivados, o que garante a reprodutibilidade integral dos resultados. A camada online é empacotada em uma imagem Docker de dois estágios, que contém apenas a interface e os arquivos Parquet pré-calculados, e é compatível com o ambiente gratuito de CPU do Hugging Face Spaces (2 vCPUs e 16~GB de memória), conforme detalhado no Capítulo~\ref{cap:desenvolvimento}.
+
+% ---------------------------------------------------------------------------
+\section{Considerações Éticas}
+\label{sec:etica}
+
+O trabalho utiliza exclusivamente microdados públicos e anonimizados, sem qualquer possibilidade de identificação individual dos participantes, em conformidade com a Lei Geral de Proteção de Dados. A identificação de candidatos na explicação local refere-se apenas ao índice da linha na amostra. O modelo treinado tem finalidade exclusiva de objeto de auditoria e não deve ser empregado para decisões sobre candidatos reais: o próprio diagnóstico produzido pela ferramenta demonstra por que modelos dessa natureza não devem ser utilizados sem salvaguardas de equidade.

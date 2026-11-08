@@ -1,0 +1,7 @@
+# Lista de PERMISSÃO: o contexto de build contém só o necessário para a camada online.
+# Evita enviar data/raw (~5,7 GB de CSVs), venv/, models/, article/ etc. ao daemon.
+*
+!app.py
+!requirements-app.txt
+!data/outputs
+!data/outputs/**

@@ -155,9 +155,21 @@ docker run -p 7860:7860 audit-edu-xai
 ```
 
 ### 6.2 Deploy no Hugging Face Spaces
-1. Crie um **Space** do tipo **Docker** (Blank/Custom) no Hugging Face.
-2. Certifique-se de incluir a pasta `data/outputs/` com os Parquets pré-calculados no repositório do Space.
-3. Garanta que a porta de exposição seja a `7860`.
+O `Dockerfile` é **multi-stage** (`builder` instala as dependências de `requirements-app.txt` num venv; `runner` copia só o venv, `app.py` e `data/outputs/`), roda como usuário não-root UID 1000 e expõe a porta `7860`. O `.dockerignore` é uma lista de permissão: `data/raw/`, `venv/`, `models/` e `article/` não entram no contexto de build.
+
+1. Crie um **Space** do tipo **Docker** (Blank) no Hugging Face (hardware: CPU Basic — 2 vCPUs, 16 GB).
+2. Envie ao repositório do Space: `Dockerfile`, `.dockerignore`, `requirements-app.txt`, `app.py` e `data/outputs/`.
+3. O `README.md` **do Space** deve começar com o cabeçalho YAML:
+
+```yaml
+---
+title: AuditEdu-XAI
+sdk: docker
+app_port: 7860
+---
+```
+
+> O pipeline offline (`src/01`–`05`) **não** roda no contêiner: execute-o localmente e envie os Parquets resultantes.
 
 ---
 

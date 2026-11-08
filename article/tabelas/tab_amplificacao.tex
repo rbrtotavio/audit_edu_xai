@@ -1,0 +1,22 @@
+% ARQUIVO GERADO AUTOMATICAMENTE por article/scripts/gerar_resultados.py
+% Fonte: data/outputs/*.parquet — NÃO EDITAR À MÃO.
+\begin{table}[htbp]
+\centering
+\caption{Impacto Disparate dos rótulos reais ($y$) versus das predições ($\hat{y}$) por raça/cor}
+\label{tab:amplificacao}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l*{9}{c}}
+\toprule
+ & \multicolumn{3}{c}{\textbf{2019}} & \multicolumn{3}{c}{\textbf{2020}} & \multicolumn{3}{c}{\textbf{2021}} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}
+\textbf{Grupo} & $\mathrm{DI}_y$ & $\mathrm{DI}_{\hat{y}}$ & $\Delta$ & $\mathrm{DI}_y$ & $\mathrm{DI}_{\hat{y}}$ & $\Delta$ & $\mathrm{DI}_y$ & $\mathrm{DI}_{\hat{y}}$ & $\Delta$ \\
+\midrule
+Preta & 0,637 & 0,426 & −0,211 & 0,626 & 0,365 & −0,260 & 0,595 & 0,337 & −0,258 \\
+Parda & 0,678 & 0,495 & −0,183 & 0,674 & 0,462 & −0,212 & 0,662 & 0,423 & −0,240 \\
+Amarela & 0,749 & 0,609 & −0,140 & 0,809 & 0,498 & −0,311 & 0,838 & 0,663 & −0,175 \\
+Indígena & 0,581 & 0,252 & −0,329 & 0,389 & 0,169 & −0,220 & 0,311 & 0,417 & +0,106 \\
+Não declarada & 0,891 & 0,620 & −0,271 & 0,827 & 0,633 & −0,194 & 0,798 & 0,629 & −0,169 \\
+\bottomrule
+\end{tabular}}
+\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Referência: Branca. $\Delta = \mathrm{DI}_{\hat{y}} - \mathrm{DI}_y$ (valores negativos indicam amplificação da disparidade pelo modelo).}
+\end{table}

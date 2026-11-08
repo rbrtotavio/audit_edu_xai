@@ -1,0 +1,25 @@
+% ARQUIVO GERADO AUTOMATICAMENTE por article/scripts/gerar_resultados.py
+% Fonte: data/outputs/*.parquet — NÃO EDITAR À MÃO.
+\begin{table}[htbp]
+\centering
+\caption{Ranking de importância global SHAP (média de $|\phi_i|$, escala log-odds) no conjunto de teste}
+\label{tab:shap}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{clclclc}
+\toprule
+ & \multicolumn{2}{c}{\textbf{2019}} & \multicolumn{2}{c}{\textbf{2020}} & \multicolumn{2}{c}{\textbf{2021}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+\textbf{\#} & \textbf{Atributo} & $\overline{|\phi|}$ & \textbf{Atributo} & $\overline{|\phi|}$ & \textbf{Atributo} & $\overline{|\phi|}$ \\
+\midrule
+1 & Computador: nenhum computador & 0,405 & Computador: nenhum computador & 0,448 & Computador: nenhum computador & 0,506 \\
+2 & Renda: até 1 SM & 0,186 & Renda: até 1 SM & 0,194 & Computador: um computador & 0,203 \\
+3 & Renda: 1 a 1,5 SM & 0,134 & Raça/cor: branca & 0,164 & Renda: até 1 SM & 0,181 \\
+4 & Raça/cor: branca & 0,130 & Computador: um computador & 0,137 & Raça/cor: branca & 0,148 \\
+5 & Computador: um computador & 0,095 & Renda: 1 a 1,5 SM & 0,085 & Renda: 1 a 1,5 SM & 0,082 \\
+6 & Escol. da mãe: superior completo & 0,083 & Renda: nenhuma renda & 0,075 & Escol. do pai: superior completo & 0,077 \\
+7 & Escol. da mãe: médio completo & 0,081 & Escol. do pai: médio completo & 0,071 & Escol. do pai: médio completo & 0,073 \\
+8 & Escol. da mãe: pós-graduação & 0,075 & Escol. da mãe: médio completo & 0,068 & Renda: nenhuma renda & 0,065 \\
+\bottomrule
+\end{tabular}}
+\fonte{Elaborado pelo autor a partir de \texttt{shap\_values\_\{ano\}.parquet}.}
+\end{table}
