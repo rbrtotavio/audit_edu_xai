@@ -18,15 +18,18 @@ Os requisitos do artefato derivam dos objetivos do trabalho e das restrições d
 \textbf{ID} & \textbf{Descrição} \\ \hline
 RF01 & Selecionar a edição do ENEM (2019, 2020 ou 2021) a ser auditada. \\ \hline
 RF02 & Selecionar o atributo protegido (raça/cor ou renda familiar). \\ \hline
-RF03 & Exibir, por subgrupo, a taxa de seleção, o Impacto Disparate e um alerta visual quando $\mathrm{DI} < 0{,}8$. \\ \hline
-RF04 & Exibir o DI dos rótulos reais, a TPR e a FPR por subgrupo. \\ \hline
-RF05 & Exibir a importância global dos atributos (SHAP \textit{summary plot}). \\ \hline
-RF06 & Exibir a explicação local de um candidato selecionado (SHAP \textit{waterfall plot}). \\ \hline
-RNF01 & Tempo de resposta da interface inferior a 2~s por interação. \\ \hline
+RF03 & Exibir, por subgrupo, a taxa de seleção, o Impacto Disparate com intervalo de confiança e um alerta visual quando $\mathrm{DI} < 0{,}8$. \\ \hline
+RF04 & Exibir o DI dos rótulos reais, a TPR e a FPR por subgrupo, evidenciando a amplificação do viés pelo modelo. \\ \hline
+RF05 & Exibir a importância global dos atributos com rótulos legíveis e, sob demanda, o SHAP \textit{summary plot}. \\ \hline
+RF06 & Exibir a explicação local de um candidato selecionado (perfil, chance estimada e SHAP \textit{waterfall plot}). \\ \hline
+RF07 & Exibir os resultados do experimento de injeção sintética de viés. \\ \hline
+RF08 & Exibir a evolução do DI entre as edições e permitir o download das métricas em CSV. \\ \hline
+RNF01 & Tempo de resposta da interface inferior a 2~s por interação (meta interna de projeto: 1,5~s). \\ \hline
 RNF02 & Pipeline em lote executável com até 8~GB de memória RAM. \\ \hline
 RNF03 & Reprodutibilidade integral: toda etapa estocástica usa semente fixa (42). \\ \hline
 RNF04 & Execução da interface em CPU Basic do Hugging Face Spaces (2 vCPUs, 16~GB). \\ \hline
 RNF05 & Portabilidade por contêiner Docker. \\ \hline
+RNF06 & Acessibilidade: nenhum estado comunicado apenas por cor; termos técnicos acompanhados de explicação. \\ \hline
 \end{tabular}
 \fonte{Elaborado pelo autor.}
 \end{quadro}
@@ -128,7 +131,7 @@ O contrato de dados de \textbf{entrada}, isto é, as colunas extraídas dos micr
 \textbf{Arquivo} & \textbf{Conteúdo (colunas principais)} \\ \hline
 \texttt{model\_metrics\_\{ano\}} & Acurácia, precisão, recall, F1, AUC-ROC, hiperparâmetros selecionados e valor base SHAP. \\ \hline
 \texttt{fairness\_metrics\_\{ano\}} & Uma linha por subgrupo de cada atributo protegido: \textit{n}, taxa de seleção, grupo de referência, DI, alerta, taxa-base real, DI dos rótulos, amplificação, TPR, FPR, suas diferenças em relação à referência e intervalos de confiança \textit{bootstrap} de 95\%. \\ \hline
-\texttt{shap\_feature\_summary\_\{ano\}} & Por atributo codificado: importância média, prevalência, contribuição média com e sem a categoria e diferença condicional. \\ \hline
+\texttt{shap\_feature\_\allowbreak summary\_\{ano\}} & Por atributo codificado: importância média, prevalência, contribuição média com e sem a categoria e diferença condicional. \\ \hline
 \texttt{data\_quality} & Por edição e coluna: ausentes, moda imputada, margem da moda e mediana populacional da NMG. \\ \hline
 \texttt{shap\_values\_\{ano\}} & Matriz $10.000 \times 46$ de valores SHAP (log-odds), identificador da linha na amostra e valor base. \\ \hline
 \texttt{shap\_features\_\{ano\}} & Matriz binária dos atributos codificados, alinhada linha a linha à matriz SHAP. \\ \hline
@@ -149,16 +152,16 @@ As decisões de engenharia voltadas ao desempenho atuam em três níveis.
 
 \textbf{Armazenamento.} O formato colunar Apache Parquet \cite{parquet2026} armazena os dados comprimidos e permite ler apenas as colunas necessárias. Os artefatos consumidos pela interface ocupam menos de 1~MB por edição (Tabela~\ref{tab:app_benchmark}), o que permite incluí-los diretamente na imagem de implantação.
 
-\textbf{Apresentação.} A interface aplica dois níveis de cache do Streamlit \cite{streamlit2026}. O primeiro guarda os Parquets de cada edição, lidos uma única vez. O segundo guarda o \textit{summary plot} SHAP, que posiciona 10.000 pontos para cada um dos 46 atributos e é a operação mais cara da página: ele é renderizado uma única vez por edição e reutilizado como imagem. Durante o desenvolvimento, a medição de desempenho mostrou que, sem esse segundo nível, o gráfico era redesenhado a cada interação e mantinha o tempo de resposta próximo do limite de 2~s, mesmo com os dados já em cache.
+\textbf{Apresentação.} A interface aplica dois níveis de cache do Streamlit \cite{streamlit2026}. O primeiro guarda os Parquets de cada edição, lidos uma única vez, e estruturas derivadas leves, como o índice de candidatos por grupo. O segundo guarda o \textit{summary plot} SHAP, que posiciona 10.000 pontos para cada um dos 46 atributos e é a operação mais cara da página: ele é renderizado uma única vez por edição e reutilizado como imagem. A medição de desempenho orientou duas decisões. Primeiro, sem esse cache, o gráfico era redesenhado a cada interação e mantinha o tempo de resposta próximo do limite de 2~s. Segundo, mesmo cacheado, ele dominava o tempo da primeira carga. Por isso, na versão final, o \textit{summary plot} é exibido \textbf{sob demanda}, e a visão padrão de importância global usa um gráfico de barras leve, construído a partir de um resumo pré-calculado.
 
 O requisito RNF01 foi avaliado localmente pelo módulo \texttt{06\_benchmark\_app.py}. O módulo executa a interface completa em modo \textit{headless} para cada combinação de edição e atributo: uma primeira carga com o cache vazio e cinco interações subsequentes. Como a máquina de desenvolvimento dispõe de 12 núcleos lógicos, e o ambiente-alvo, de 2 vCPUs, a medição foi repetida com a afinidade do processo restrita a 2 núcleos e as bibliotecas numéricas limitadas a duas \textit{threads}. Os resultados constam da Tabela~\ref{tab:app_benchmark}:
 \begin{itemize}
-    \item sem restrição, a primeira carga de cada edição leva entre 1,45~s e 1,52~s;
-    \item com 2 núcleos, a primeira carga leva entre 1,40~s e 1,43~s;
-    \item nas duas configurações, as interações subsequentes levam em média menos de 0,07~s, com máximo de 0,158~s;
-    \item todas as 72 execuções ficaram abaixo de 2~s.
+    \item sem restrição, a primeira carga de cada edição leva entre 0,18~s e 0,26~s;
+    \item com 2 núcleos, a primeira carga leva entre 0,16~s e 0,23~s;
+    \item nas duas configurações, as interações subsequentes levam em média entre 0,12~s e 0,18~s, com máximo de 0,320~s;
+    \item todas as 72 execuções ficaram abaixo de 2~s e também da meta interna de 1,5~s.
 \end{itemize}
-A restrição de núcleos não aumentou o tempo de resposta, o que é coerente com uma carga dominada por operações sequenciais de leitura e renderização. Ressalva-se que essa é uma \textbf{aproximação} do ambiente-alvo, executada na mesma CPU física e sem a virtualização e a contenção de recursos de uma plataforma compartilhada. A confirmação definitiva do requisito exige medição no próprio Hugging Face Spaces após a implantação.
+A restrição de núcleos não aumentou o tempo de resposta, o que é coerente com uma carga dominada por operações sequenciais de leitura e renderização. A medição cobre a página na configuração padrão. A primeira renderização do \textit{summary plot}, acionada sob demanda pelo usuário, não está incluída nela e ocorre uma única vez por edição. Ressalva-se que essa é uma \textbf{aproximação} do ambiente-alvo, executada na mesma CPU física e sem a virtualização e a contenção de recursos de uma plataforma compartilhada. A confirmação definitiva do requisito exige medição no próprio Hugging Face Spaces após a implantação.
 
 \input{tabelas/tab_app_benchmark}
 
@@ -166,13 +169,41 @@ A restrição de núcleos não aumentou o tempo de resposta, o que é coerente c
 \section{Interface Interativa}
 \label{sec:interface}
 
-A camada online foi implementada com o \textit{framework} Streamlit \cite{streamlit2026}, que permite construir aplicações de dados em Python sem desenvolvimento \textit{front-end} dedicado. A interface organiza-se em uma barra lateral de parâmetros e dois painéis.
+A camada online foi implementada com o \textit{framework} Streamlit \cite{streamlit2026}, que permite construir aplicações de dados em Python sem desenvolvimento \textit{front-end} dedicado. O projeto da interface teve como público-alvo um usuário sem formação em aprendizado de máquina, como um gestor, um professor ou um membro de órgão de controle, e seguiu quatro princípios:
+\begin{itemize}
+    \item \textbf{rótulos legíveis:} os códigos dos microdados são substituídos pelos termos do dicionário do INEP (por exemplo, ``Sem computador em casa'' em vez de \texttt{Q024\_A}), os mesmos usados nesta monografia;
+    \item \textbf{explicação em contexto:} cada métrica traz uma dica explicativa, e cada gráfico, um texto curto de interpretação;
+    \item \textbf{acessibilidade (RNF06):} todo estado (viés, conformidade e grupo de referência) é comunicado por ícone e texto, além da cor, o que preserva a leitura por pessoas com daltonismo e em impressão monocromática;
+    \item \textbf{honestidade estatística:} as estimativas aparecem com intervalos de confiança, e grupos com menos de 30 casos positivos recebem aviso de baixa precisão.
+\end{itemize}
+A interface organiza-se em uma barra lateral, uma faixa de indicadores e três abas.
 
-\textbf{Barra lateral.} Contém dois seletores, um para a edição do ENEM (RF01) e outro para o atributo protegido (RF02). Qualquer alteração reexecuta a página com os dados da seleção.
+\textbf{Barra lateral.} Contém os seletores de edição do ENEM (RF01) e de atributo protegido (RF02), uma legenda dos ícones de situação e um resumo do escopo da ferramenta. Qualquer alteração reexecuta a página com os dados da seleção.
 
-\textbf{Painel 1 --- Equidade algorítmica.} Apresenta três indicadores-resumo: o menor DI entre os subgrupos, sinalizado como ``Viés Detectado'' quando inferior a 0,8; o grupo de referência; e o limiar da regra. Em seguida, uma tabela exibe, por subgrupo, o total de candidatos, as predições positivas, a taxa de seleção, o DI (com destaque em vermelho para valores abaixo de 0,8), o DI dos rótulos reais, a TPR, a FPR e o alerta de viés (RF03 e RF04). Um gráfico de barras das taxas de seleção, com uma linha tracejada em 80\% da taxa de referência, permite identificar visualmente os grupos em situação de impacto adverso.
+\textbf{Indicadores.} Quatro cartões sintetizam a auditoria da seleção corrente:
+\begin{itemize}
+    \item o menor Impacto Disparate, com sua distância até o limiar de 0,8 e o grupo correspondente;
+    \item o número de grupos em alerta;
+    \item a taxa de seleção global, explicitamente rotulada como ``acima da mediana da edição'' para evitar a leitura equivocada de ``aprovação'';
+    \item a AUC-ROC do modelo.
+\end{itemize}
 
-\textbf{Painel 2 --- Explicabilidade.} Organiza-se em duas abas. A aba global exibe o \textit{summary plot} SHAP (RF05), no qual cada ponto é um candidato, a posição horizontal indica a contribuição do atributo e a cor indica seu valor. A aba local permite escolher um candidato pelo índice e exibe um \textit{waterfall plot} interativo (RF06), que decompõe sua predição, partindo do valor base, nas contribuições de cada atributo. Esse recurso pode subsidiar, sem substituir, as informações sobre critérios e procedimentos da decisão automatizada a que o titular tem direito pelo Art.~20 da LGPD \cite{brasil2018lgpd}. Uma decomposição técnica da predição não equivale, por si só, a uma explicação clara e adequada ao destinatário leigo.
+\textbf{Aba ``Visão Geral de Equidade''.} O gráfico principal apresenta o DI de cada subgrupo em barras horizontais, com o intervalo de confiança de 95\% na extremidade de cada barra e o limiar de 0,8 identificado em legenda (RF03). Um texto lateral interpreta o resultado, indica quantos alertas se mantêm em ao menos 95\% das reamostragens \textit{bootstrap} e destaca os grupos de baixa precisão. Um segundo gráfico confronta, para cada grupo, o DI calculado sobre as notas reais e o DI das previsões, sinalizando os casos em que o alerta é \textbf{criado} pelo modelo (RF04). Completam a aba:
+\begin{itemize}
+    \item uma tabela detalhada com taxa de seleção, DI e TPR com intervalos de confiança, e FPR;
+    \item o download das métricas em CSV;
+    \item uma nota que apresenta a regra dos quatro quintos como indicador de triagem, e não como teste jurídico;
+    \item a evolução do DI de cada grupo entre 2019 e 2021 (RF08).
+\end{itemize}
+
+\textbf{Aba ``Explicabilidade (SHAP)''.} Divide-se em duas visões:
+\begin{itemize}
+    \item \textbf{global (RF05):} um gráfico de barras com os doze atributos de maior importância média, em linguagem natural, e um destaque para a exclusão digital, com a diferença condicional SHAP e a prevalência de candidatos sem computador em cada edição. O \textit{summary plot}, no qual cada ponto é um candidato, é exibido sob demanda;
+    \item \textbf{local (RF06):} permite filtrar candidatos por raça/cor e escolher um deles. A tela mostra seu perfil socioeconômico legível, a chance estimada de ficar acima da mediana e um \textit{waterfall plot} com as oito maiores contribuições SHAP, as demais agregadas, partindo do valor médio do modelo até a previsão final.
+\end{itemize}
+Esse recurso pode subsidiar, sem substituir, as informações sobre critérios e procedimentos da decisão automatizada a que o titular tem direito pelo Art.~20 da LGPD \cite{brasil2018lgpd}. Uma decomposição técnica da predição não equivale, por si só, a uma explicação clara e adequada ao destinatário leigo.
+
+\textbf{Aba ``Injeção Sintética de Viés'' (RF07).} Torna visível ao usuário a validação descrita na Seção~\ref{sec:injecao}. Para o grupo-alvo escolhido (Pardo ou Indígena) e a edição selecionada, dois gráficos lado a lado mostram a queda do DI nos cenários de injeção e de controle e a variação, muito menor, da AUC-ROC. Três indicadores sintetizam o efeito com 50\% de intensidade. A aba materializa para o usuário o argumento central do trabalho: um modelo validado apenas por métricas agregadas poderia ser aprovado mesmo excluindo sistematicamente um grupo.
 
 % Sugestão ao autor: inserir aqui capturas de tela do painel (Figura: Painel de equidade; Figura: Painel SHAP),
 % salvas em figuras/dashboard_*.png, com \fonte{Elaborado pelo autor.}

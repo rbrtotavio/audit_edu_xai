@@ -1,5 +1,5 @@
 # AuditEdu-XAI — manifesto de integridade SHA-256 (formato sha256sum)
-# Gerado em: 2026-11-08T01:42:38-03:00
+# Gerado em: 2026-11-08T03:01:44-03:00
 # Plataforma: Windows-11-10.0.26200-SP0
 # Python: 3.12.4
 # pandas: 2.3.3
@@ -42,8 +42,8 @@ a33a0cac3bfb072ad2d38ba98a56d770e3a4a79959718512b5ebe2ed459b2480  data/processed
 f0d235397cabdf762d9ab801e1349e3ecf29a1fea41ba467e5e9e5f3004122b7  models/xgboost_2021.joblib
 #
 # --- data/outputs/*.parquet (19 arquivos) ---
-# data/outputs/app_benchmark.parquet  9754 bytes
-522c390d97dc31af883c9accac2f3e941ceef62515f4e2255bbef8af28d2c036  data/outputs/app_benchmark.parquet
+# data/outputs/app_benchmark.parquet  9751 bytes
+f056f8740d9a293ab33392ba86215aec4100e12d1f09dda6b4bbbc748a78591e  data/outputs/app_benchmark.parquet
 # data/outputs/bias_injection_runs.parquet  24913 bytes
 6cbdd4329688bbe98a27977b2a97644d4a9f6cc2be76b7aba65400ad9561fee4  data/outputs/bias_injection_runs.parquet
 # data/outputs/bias_injection_summary.parquet  19821 bytes
