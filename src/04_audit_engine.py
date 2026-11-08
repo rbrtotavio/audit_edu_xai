@@ -27,6 +27,7 @@ TARGET_COL = "target"
 TEST_SIZE = 0.20
 RANDOM_STATE = 42
 DI_THRESHOLD = 0.80  # Regra dos 80% (EEOC)
+BOOTSTRAP_B = 2000   # Réplicas do bootstrap do teste (ICs 95% percentílicos)
 
 
 def reproduce_test_split(df: pd.DataFrame, seed: int = RANDOM_STATE):
@@ -54,15 +55,101 @@ def _safe_rate(numerator: float, denominator: float) -> float:
     return float(numerator / denominator) if denominator > 0 else float("nan")
 
 
-def calculate_fairness_metrics(df_eval: pd.DataFrame, year: int) -> pd.DataFrame:
+def draw_bootstrap_indices(n: int, b: int, seed: int = RANDOM_STATE, chunk: int = 250) -> np.ndarray:
+    """
+    Sorteia B reamostragens com reposição de n linhas (matriz B x n de índices, int32).
+    As mesmas réplicas são usadas para todos os atributos protegidos do ano.
+    """
+    rng = np.random.default_rng(seed)
+    out = np.empty((b, n), dtype=np.int32)
+    for start in range(0, b, chunk):
+        stop = min(start + chunk, b)
+        out[start:stop] = rng.integers(0, n, size=(stop - start, n), dtype=np.int32)
+    return out
+
+
+def bootstrap_group_counts(codes: np.ndarray, y_true: np.ndarray, y_pred: np.ndarray,
+                           n_groups: int, boot_idx: np.ndarray, chunk: int = 250) -> np.ndarray:
+    """
+    Para cada réplica, conta as observações por (grupo, y_true, y_pred) com um único
+    np.bincount vetorizado. Retorna um array (B, n_groups, 4) em que o último eixo é
+    a célula 2*y_true + y_pred: 0 = (y=0, ŷ=0), 1 = (y=0, ŷ=1), 2 = (y=1, ŷ=0), 3 = (y=1, ŷ=1).
+    """
+    key = (codes.astype(np.int64) * 4 + 2 * y_true.astype(np.int64) + y_pred.astype(np.int64))
+    width = n_groups * 4
+    b = boot_idx.shape[0]
+    counts = np.empty((b, width), dtype=np.int64)
+    for start in range(0, b, chunk):
+        stop = min(start + chunk, b)
+        offsets = (np.arange(stop - start, dtype=np.int64) * width)[:, None]
+        flat = (key[boot_idx[start:stop]] + offsets).ravel()
+        counts[start:stop] = np.bincount(flat, minlength=(stop - start) * width).reshape(stop - start, width)
+    return counts.reshape(b, n_groups, 4)
+
+
+def _nan_percentiles(values: np.ndarray) -> tuple:
+    """Percentis 2,5 e 97,5 ignorando NaN (réplicas em que a taxa é indefinida)."""
+    finite = values[~np.isnan(values)]
+    if finite.size == 0:
+        return float("nan"), float("nan")
+    low, high = np.percentile(finite, [2.5, 97.5])
+    return float(low), float(high)
+
+
+def bootstrap_fairness_ci(codes: np.ndarray, y_true: np.ndarray, y_pred: np.ndarray,
+                          n_groups: int, ref_code: int, boot_idx: np.ndarray) -> list:
+    """
+    Intervalos de confiança percentílicos (95%) por bootstrap não paramétrico do conjunto
+    de TESTE, com o modelo FIXO (mede apenas a variabilidade amostral do teste, não a do
+    treinamento). A identidade do grupo de referência é mantida fixa (a observada na
+    amostra original); em cada réplica DI_g = TS_g / TS_ref.
+    Réplicas em que uma taxa é indefinida (denominador 0) são ignoradas (NaN).
+    """
+    counts = bootstrap_group_counts(codes, y_true, y_pred, n_groups, boot_idx).astype(np.float64)
+    n_g = counts.sum(axis=2)
+    sel = counts[:, :, 1] + counts[:, :, 3]
+    pos = counts[:, :, 2] + counts[:, :, 3]
+    neg = counts[:, :, 0] + counts[:, :, 1]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        sr = np.where(n_g > 0, sel / n_g, np.nan)
+        tpr = np.where(pos > 0, counts[:, :, 3] / pos, np.nan)
+        fpr = np.where(neg > 0, counts[:, :, 1] / neg, np.nan)
+        ref_sr = sr[:, [ref_code]]
+        di = np.where(ref_sr > 0, sr / ref_sr, np.nan)
+
+    results = []
+    for k in range(n_groups):
+        di_k = di[:, k]
+        valid = ~np.isnan(di_k)
+        results.append({
+            "di_ci": _nan_percentiles(di_k),
+            "tpr_ci": _nan_percentiles(tpr[:, k]),
+            "fpr_ci": _nan_percentiles(fpr[:, k]),
+            # Fração das réplicas válidas (DI definido) com DI abaixo do limiar de 0,8
+            "p_di_below": float((di_k[valid] < DI_THRESHOLD).mean()) if valid.any() else float("nan"),
+        })
+    return results
+
+
+def calculate_fairness_metrics(df_eval: pd.DataFrame, year: int, bootstrap_b: int = 0,
+                               seed: int = RANDOM_STATE) -> pd.DataFrame:
     """
     Calcula, por subgrupo de cada atributo protegido (somente no conjunto de teste):
       - Taxa de seleção P(ŷ=1 | G=g) e Impacto Disparate (DI) — Paridade Demográfica;
       - Taxa base real P(y=1 | G=g) e DI dos rótulos (para medir amplificação do viés);
       - TPR = P(ŷ=1 | y=1, G=g) e FPR = P(ŷ=1 | y=0, G=g) — Equal Opportunity / Equalized Odds.
     O grupo de referência é o subgrupo de maior taxa de seleção.
+
+    bootstrap_b > 0 acrescenta ICs 95% por bootstrap (B réplicas, np.random.default_rng(seed))
+    e o nº de rótulos negativos por grupo. Com bootstrap_b = 0 (padrão, usado por
+    05_bias_injection.py) o esquema e os valores de saída são exatamente os originais.
     """
     records = []
+    boot_idx = None
+    if bootstrap_b > 0:
+        boot_idx = draw_bootstrap_indices(len(df_eval), bootstrap_b, seed)
+        y_true_all = df_eval["y_true"].to_numpy().astype(np.int64)
+        y_pred_all = df_eval["y_pred"].to_numpy().astype(np.int64)
 
     for attr in PROTECTED_ATTRIBUTES:
         rows = []
@@ -88,10 +175,20 @@ def calculate_fairness_metrics(df_eval: pd.DataFrame, year: int) -> pd.DataFrame
         ref_tpr = ref["tpr"]
         ref_fpr = ref["fpr"]
 
-        for _, row in grouped.iterrows():
+        boot = None
+        if boot_idx is not None:
+            # Códigos 0..G-1 na mesma ordem de `grouped` (ordem do groupby)
+            code_of = {v: k for k, v in enumerate(grouped["group_raw"])}
+            codes = df_eval[attr].map(code_of).to_numpy()
+            if pd.isna(codes).any():
+                raise ValueError(f"Valores de {attr} sem grupo correspondente no bootstrap.")
+            boot = bootstrap_fairness_ci(codes.astype(np.int64), y_true_all, y_pred_all,
+                                         len(grouped), code_of[ref["group_raw"]], boot_idx)
+
+        for k, (_, row) in enumerate(grouped.iterrows()):
             di = _safe_rate(row["selection_rate"], ref_rate) if ref_rate > 0 else 1.0
             label_di = _safe_rate(row["base_rate"], ref_base_rate)
-            records.append({
+            rec = {
                 "year": year,
                 "eval_split": "test",
                 "protected_attribute": attr,
@@ -116,9 +213,57 @@ def calculate_fairness_metrics(df_eval: pd.DataFrame, year: int) -> pd.DataFrame
                 "tpr_ratio": _safe_rate(row["tpr"], ref_tpr),
                 "equal_opportunity_diff": float(row["tpr"] - ref_tpr),
                 "fpr_diff": float(row["fpr"] - ref_fpr),
-            })
+            }
+            if boot is not None:
+                b_k = boot[k]
+                rec.update({
+                    "negative_label_count": int(row["total_count"] - row["true_positive_label_count"]),
+                    "di_ci_low": b_k["di_ci"][0],
+                    "di_ci_high": b_k["di_ci"][1],
+                    "tpr_ci_low": b_k["tpr_ci"][0],
+                    "tpr_ci_high": b_k["tpr_ci"][1],
+                    "fpr_ci_low": b_k["fpr_ci"][0],
+                    "fpr_ci_high": b_k["fpr_ci"][1],
+                    "p_di_below_threshold": b_k["p_di_below"],
+                    "bootstrap_b": int(bootstrap_b),
+                })
+            records.append(rec)
 
     return pd.DataFrame(records)
+
+
+def calculate_shap_feature_summary(shap_matrix: np.ndarray, X_trans: np.ndarray,
+                                   feature_names: list, year: int) -> pd.DataFrame:
+    """
+    Resumo SHAP por coluna One-Hot (teste), comparável entre edições:
+      - mean_abs_phi: média de |φ| (importância global usual; depende da prevalência);
+      - prevalence: média da dummy no teste;
+      - mean_phi_when_1 / mean_phi_when_0: média de φ entre quem tem / não tem a categoria;
+      - conditional_gap = mean_phi_when_0 − mean_phi_when_1 (positivo ⇒ a categoria reduz o escore);
+      - rank_mean_abs: posição pela média de |φ| (1 = maior).
+    """
+    X = np.asarray(X_trans, dtype=np.float64)
+    phi = np.asarray(shap_matrix, dtype=np.float64)
+    is1 = X == 1
+    n1 = is1.sum(axis=0)
+    n0 = len(X) - n1
+    sum1 = np.where(is1, phi, 0.0).sum(axis=0)
+    sum0 = phi.sum(axis=0) - sum1
+    with np.errstate(divide="ignore", invalid="ignore"):
+        mean1 = np.where(n1 > 0, sum1 / n1, np.nan)
+        mean0 = np.where(n0 > 0, sum0 / n0, np.nan)
+    df = pd.DataFrame({
+        "year": year,
+        "feature": feature_names,
+        "mean_abs_phi": np.abs(phi).mean(axis=0),
+        "prevalence": X.mean(axis=0),
+        "n_when_1": n1.astype(np.int64),
+        "mean_phi_when_1": mean1,
+        "mean_phi_when_0": mean0,
+        "conditional_gap": mean0 - mean1,
+    })
+    df["rank_mean_abs"] = df["mean_abs_phi"].rank(ascending=False, method="min").astype(int)
+    return df.sort_values("rank_mean_abs").reset_index(drop=True)
 
 
 def calculate_model_metrics(y_true, y_pred, y_proba, pipeline, year: int, base_value: float) -> pd.DataFrame:
@@ -179,7 +324,8 @@ def run_audit_for_year(year: int) -> None:
 
     # 1. Métricas de Fairness (Paridade Demográfica, DI, TPR/FPR)
     print("Calculando Paridade Demográfica, Impacto Disparate e Equal Opportunity (TPR/FPR)...")
-    df_fairness = calculate_fairness_metrics(df_eval, year)
+    print(f"  + ICs 95% por bootstrap do teste (B={BOOTSTRAP_B}, seed={RANDOM_STATE}, modelo fixo)...")
+    df_fairness = calculate_fairness_metrics(df_eval, year, bootstrap_b=BOOTSTRAP_B)
 
     # 2. Cálculo Nativo SHAP via C++ do XGBoost (pred_contribs=True)
     print("Gerando matriz SHAP com o motor C++ nativo do XGBoost...")
@@ -200,6 +346,9 @@ def run_audit_for_year(year: int) -> None:
     df_features_trans = pd.DataFrame(X_trans.astype("uint8"), columns=feature_names)
     df_features_trans.insert(0, "row_id", row_ids)
 
+    # Resumo SHAP por atributo One-Hot (prevalência e diferença condicional de φ)
+    df_shap_summary = calculate_shap_feature_summary(shap_matrix, X_trans, feature_names, year)
+
     # 3. Métricas de desempenho do modelo no teste
     df_model = calculate_model_metrics(y_true, y_pred, y_proba, pipeline, year, base_val)
 
@@ -210,6 +359,7 @@ def run_audit_for_year(year: int) -> None:
         "shap_values": df_shap,
         "shap_features": df_features_trans,
         "model_metrics": df_model,
+        "shap_feature_summary": df_shap_summary,
     }
     for name, frame in outputs.items():
         frame.to_parquet(OUTPUTS_DIR / f"{name}_{year}.parquet", engine="pyarrow", index=False)

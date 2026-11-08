@@ -1,0 +1,17 @@
+% ARQUIVO GERADO AUTOMATICAMENTE por article/scripts/gerar_resultados.py
+% Fonte: data/outputs/*.parquet — NÃO EDITAR À MÃO.
+\begin{table}[htbp]
+\centering
+\caption{Decomposição da importância SHAP do atributo ``sem computador'' (Q024 = A) por edição}
+\label{tab:shap_q024}
+\begin{tabular}{cccccc}
+\toprule
+\textbf{Edição} & \textbf{Prevalência} & $\overline{|\phi|}$ & $\bar{\phi}$ \textbf{(sem comp.)} & $\bar{\phi}$ \textbf{(com comp.)} & \textbf{Diferença} \\
+\midrule
+2019 & 0,445 & 0,405 & −0,505 & 0,325 & 0,830 \\
+2020 & 0,444 & 0,448 & −0,564 & 0,356 & 0,920 \\
+2021 & 0,381 & 0,506 & −0,774 & 0,342 & 1,116 \\
+\bottomrule
+\end{tabular}
+\fonte{Elaborado pelo autor a partir de \texttt{shap\_feature\_summary\_\{ano\}.parquet}. Prevalência: proporção de candidatos sem computador no teste. Diferença: $\bar{\phi}$ (com comp.) $-$ $\bar{\phi}$ (sem comp.), em log-odds.}
+\end{table}

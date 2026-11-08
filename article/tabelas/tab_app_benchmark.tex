@@ -2,19 +2,22 @@
 % Fonte: data/outputs/*.parquet — NÃO EDITAR À MÃO.
 \begin{table}[htbp]
 \centering
-\caption{Tempo de execução da interface por interação (segundos)}
+\caption{Tempo de execução da interface por interação (segundos), sem restrição e com 2 núcleos}
 \label{tab:app_benchmark}
-\begin{tabular}{llcccc}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llccccccc}
 \toprule
-\textbf{Edição} & \textbf{Atributo} & \textbf{Primeira carga} & \textbf{Interação (média)} & \textbf{Interação (máx.)} & \textbf{Parquets (MB)} \\
+ & & \multicolumn{3}{c}{\textbf{12 núcleos lógicos}} & \multicolumn{3}{c}{\textbf{2 núcleos (afinidade restrita)}} & \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+\textbf{Edição} & \textbf{Atributo} & \textbf{1.ª carga} & \textbf{Inter. (média)} & \textbf{Inter. (máx.)} & \textbf{1.ª carga} & \textbf{Inter. (média)} & \textbf{Inter. (máx.)} & \textbf{Parquets (MB)} \\
 \midrule
-2019 & Renda (Q006) & 1,34 & 0,041 & 0,042 & 0,83 \\
-2019 & Raça/cor & 1,36 & 0,041 & 0,041 & 0,83 \\
-2020 & Renda (Q006) & 1,34 & 0,044 & 0,055 & 0,86 \\
-2020 & Raça/cor & 1,37 & 0,067 & 0,153 & 0,86 \\
-2021 & Renda (Q006) & 1,34 & 0,040 & 0,041 & 0,82 \\
-2021 & Raça/cor & 1,32 & 0,040 & 0,041 & 0,82 \\
+2019 & Renda (Q006) & 1,47 & 0,046 & 0,052 & 1,40 & 0,043 & 0,048 & 0,84 \\
+2019 & Raça/cor & 1,51 & 0,045 & 0,048 & 1,41 & 0,044 & 0,048 & 0,84 \\
+2020 & Renda (Q006) & 1,45 & 0,043 & 0,045 & 1,42 & 0,046 & 0,050 & 0,87 \\
+2020 & Raça/cor & 1,52 & 0,066 & 0,158 & 1,41 & 0,063 & 0,150 & 0,87 \\
+2021 & Renda (Q006) & 1,47 & 0,044 & 0,045 & 1,40 & 0,042 & 0,044 & 0,83 \\
+2021 & Raça/cor & 1,45 & 0,045 & 0,052 & 1,43 & 0,043 & 0,044 & 0,83 \\
 \bottomrule
-\end{tabular}
-\fonte{Elaborado pelo autor a partir de \texttt{app\_benchmark.parquet}. 36 de 36 execuções abaixo de 2~s. Ambiente: Windows 11, 12 CPUs lógicas, Python 3.12.4, Streamlit 1.65.0.}
+\end{tabular}}
+\fonte{Elaborado pelo autor a partir de \texttt{app\_benchmark.parquet}. 72 de 72 execuções abaixo de 2~s. Ambiente local: Windows 11, Python 3.12.4, Streamlit 1.65.0. A restrição a 2 núcleos aproxima, mas não reproduz, o ambiente de 2 vCPUs do Hugging Face Spaces.}
 \end{table}

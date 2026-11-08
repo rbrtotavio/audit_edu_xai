@@ -7,7 +7,7 @@ Este capítulo apresenta os resultados da aplicação do artefato aos microdados
 \section{Desempenho do Modelo-Alvo}
 \label{sec:res_desempenho}
 
-A Tabela~\ref{tab:desempenho} apresenta o desempenho do classificador no conjunto de teste. Nas três edições, a busca em grade selecionou a mesma configuração (100 árvores, profundidade máxima 3 e taxa de aprendizado 0,1), e o desempenho manteve-se estável: acurácia entre 0,6822 e 0,6842 e AUC-ROC entre 0,7475 e 0,7511.
+A Tabela~\ref{tab:desempenho} apresenta o desempenho do classificador no conjunto de teste. Nas três edições, a busca em grade selecionou a mesma configuração (100 árvores, profundidade máxima 3 e taxa de aprendizado 0,1), e o desempenho manteve-se estável: acurácia entre 0,6822 e 0,6842 e AUC-ROC entre 0,7475 e 0,7511. Os três hiperparâmetros selecionados situam-se nos limites da grade (maior número de árvores, menor profundidade e maior taxa de aprendizado). Isso indica que uma grade mais ampla poderia produzir ganhos marginais de desempenho. Esse refinamento não foi perseguido porque o propósito do modelo é servir de objeto representativo para a auditoria (Seção~\ref{sec:modelo}).
 
 \input{tabelas/tab_desempenho}
 
@@ -32,6 +32,12 @@ A Tabela~\ref{tab:di_raca} e a Figura~\ref{fig:di_raca} apresentam as métricas 
 Os grupos Preto e Pardo, que juntos representam mais da metade dos candidatos, apresentam as disparidades mais consistentes e com tendência de agravamento ao longo do período. O DI do grupo Preto passa de 0,426 em 2019 para 0,365 em 2020 e 0,337 em 2021; o do grupo Pardo, de 0,495 para 0,462 e 0,423. Em 2021, portanto, um candidato preto tinha cerca de um terço da probabilidade de um candidato branco de ser classificado acima da mediana.
 
 O grupo Indígena apresenta os menores valores em 2019 (0,252) e 2020 (0,169). Esses valores, contudo, devem ser interpretados com cautela: o grupo conta com apenas 47 a 52 candidatos no conjunto de teste, e a variação abrupta observada em 2021 (0,417) é compatível com flutuação amostral (ver Seção~\ref{sec:res_limitacoes}).
+
+Os intervalos de confiança da Tabela~\ref{tab:di_raca} permitem separar as conclusões robustas das frágeis.
+
+O \textbf{alerta da regra dos quatro quintos é estatisticamente robusto para todos os grupos não brancos}, inclusive o Indígena. O limite superior do IC95\% do DI não ultrapassa 0,759 em nenhum caso, e em ao menos 99,5\% das reamostragens o DI permaneceu abaixo de 0,8. A tendência de agravamento dos grupos Preto e Pardo também é sustentada pelos dados: os intervalos de 2019 e 2021 não se sobrepõem (Preto: [0,387; 0,465] e [0,302; 0,373]; Pardo: [0,472; 0,518] e [0,401; 0,444]).
+
+Em contrapartida, \textbf{as estimativas de TPR do grupo Indígena não são conclusivas}. Com apenas 19, 12 e 9 candidatos de rótulo positivo no teste, os intervalos são muito amplos ([0,000; 0,429] em 2020 e [0,429; 1,000] em 2021), e a TPR de 0,778 observada em 2021 não deve ser interpretada como evidência de igualdade de oportunidades para esse grupo.
 
 \subsection{Igualdade de Oportunidades}
 
@@ -61,7 +67,7 @@ A renda familiar produz o gradiente de disparidade mais acentuado (Tabela~\ref{t
 \fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}.}
 \end{figure}
 
-A partir da faixa F, o DI aproxima-se de 1, e diversas faixas superiores empatam com taxas de seleção próximas de 100\%. Por esse motivo, o grupo de referência varia entre as edições (faixas L, J e L), sem impacto relevante sobre os valores de DI das faixas inferiores. Como os limites das faixas são expressos em salários mínimos vigentes em cada ano, a comparação entre edições deve ser entendida em termos relativos.
+A fronteira do alerta situa-se entre as faixas E e F. Na faixa E, o DI fica abaixo de 0,8 em pelo menos 98\% das reamostragens \textit{bootstrap} nas três edições. Já a faixa F em 2021 ($\mathrm{DI} = 0{,}803$, com IC95\% de [0,774; 0,832]) encontra-se sobre o limiar: o DI ficou abaixo de 0,8 em 41,2\% das reamostragens, e a ausência de alerta nesse caso não deve ser lida como conformidade. A partir da faixa F, o DI aproxima-se de 1, e diversas faixas superiores empatam com taxas de seleção próximas de 100\%. Por esse motivo, o grupo de referência varia entre as edições (faixas L, J e L), sem impacto relevante sobre os valores de DI das faixas inferiores. Como os limites das faixas são expressos em salários mínimos vigentes em cada ano, a comparação entre edições deve ser entendida em termos relativos.
 
 % ---------------------------------------------------------------------------
 \section{Amplificação do Viés pelo Modelo}
@@ -79,7 +85,7 @@ Uma questão central para a auditoria é se o modelo apenas \textbf{reproduz} a 
 \fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}.}
 \end{figure}
 
-Em 14 das 15 combinações de grupo e edição, o DI das predições é inferior ao dos rótulos, com reduções entre 0,140 e 0,329. O caso mais revelador é o de grupos que \textbf{satisfazem a regra dos quatro quintos nos dados, mas passam a violá-la no modelo}: candidatos que não declararam raça/cor em 2019 (DI\textsubscript{$y$} = 0,891 → DI\textsubscript{$\hat{y}$} = 0,620) e em 2020 (0,827 → 0,633), e candidatos amarelos em 2020 (0,809 → 0,498) e em 2021 (0,838 → 0,663). Nesses casos, a discriminação adversa detectada é \textbf{produzida} pelo classificador.
+Em 14 das 15 combinações de grupo e edição, o DI das predições é inferior ao dos rótulos, com reduções entre 0,140 e 0,329. O caso mais revelador é o de grupos que \textbf{satisfazem a regra dos quatro quintos nos dados, mas passam a violá-la no modelo}: candidatos que não declararam raça/cor em 2019 (DI\textsubscript{$y$} = 0,891 → DI\textsubscript{$\hat{y}$} = 0,620) e em 2020 (0,827 → 0,633), e candidatos amarelos em 2020 (0,809 → 0,498) e em 2021 (0,838 → 0,663). Nesses casos, a disparidade que dispara o alerta é \textbf{introduzida} pelo classificador, e não herdada dos rótulos.
 
 O mecanismo é inerente a classificadores com limiar de decisão. Quando a maior parte dos perfis socioeconômicos de um grupo tem probabilidade estimada inferior a 0,5, o modelo atribui a classe negativa a quase todos os seus membros, comprimindo a taxa de seleção abaixo da taxa-base real. A única exceção (Indígena, 2021, $\Delta$ = +0,106) ocorre no grupo com apenas 47 candidatos no teste.
 
@@ -99,7 +105,11 @@ A Tabela~\ref{tab:shap} apresenta o ranking de importância global SHAP (Equaç�
 \fonte{Elaborado pelo autor a partir de \texttt{shap\_values\_\{ano\}.parquet}.}
 \end{figure}
 
-Três achados se destacam. Primeiro, \textbf{a ausência de computador na residência (Q024 = A) é o atributo de maior influência nas três edições}, e seu peso cresce continuamente: a importância média passa de 0,405 em 2019 para 0,448 em 2020 e 0,506 em 2021, um aumento de 25\%. A categoria ``um computador'' segue a mesma tendência, saltando da quinta posição (0,095) em 2019 para a segunda (0,203) em 2021. O crescimento coincide com o período de ensino remoto emergencial imposto pela pandemia de COVID-19, em que o acesso a equipamentos digitais tornou-se condição para a continuidade dos estudos. Essa leitura é consistente com a hipótese de que a exclusão digital se converteu em um determinante mais forte do desempenho no exame. Ressalva-se, porém, que os valores SHAP descrevem o comportamento do modelo, e não relações causais, e que a composição dos participantes mudou entre as edições (de 3,70 milhões de presentes em 2019 para 2,24 milhões em 2021), o que também pode contribuir para o efeito.
+Três achados se destacam. Primeiro, \textbf{a ausência de computador na residência (Q024 = A) é o atributo de maior influência nas três edições}, e seu peso cresce continuamente: a importância média passa de 0,405 em 2019 para 0,448 em 2020 e 0,506 em 2021, um aumento de 25\%. A categoria ``um computador'' segue a mesma tendência, saltando da quinta posição (0,095) em 2019 para a segunda (0,203) em 2021. O crescimento é temporalmente coincidente com o período de ensino remoto emergencial da pandemia de COVID-19, em que o acesso a equipamentos digitais tornou-se condição para a continuidade dos estudos. O resultado é \textbf{compatível} com a hipótese de agravamento da exclusão digital, mas o desenho do estudo, que é observacional e sem grupo de comparação, \textbf{não permite atribuí-lo causalmente à pandemia}. Ressalva-se, ainda, que os valores SHAP descrevem o comportamento do modelo, e não relações causais, e que a composição dos participantes mudou entre as edições (de 3,70 milhões de presentes em 2019 para 2,24 milhões em 2021), o que também pode contribuir para o efeito.
+
+Uma objeção técnica a essa comparação é que a importância média $\overline{|\phi|}$ de uma variável indicadora depende não apenas do efeito da categoria, mas também de sua \textbf{prevalência}. O aumento poderia, portanto, refletir apenas uma mudança na proporção de candidatos sem computador. A Tabela~\ref{tab:shap_q024} descarta essa explicação. A prevalência de candidatos sem computador no teste \textbf{diminuiu} de 0,445 em 2019 para 0,381 em 2021. No mesmo período, a diferença entre a contribuição SHAP média de quem possui e de quem não possui computador \textbf{aumentou} de 0,830 para 1,116 log-odds, um crescimento de 34\%. O peso atribuído pelo modelo à ausência de computador cresceu, portanto, por candidato, e não por efeito de composição. A queda da prevalência em 2021 é, por sua vez, coerente com a redução do número de participantes e com a hipótese de que candidatos mais vulneráveis deixaram de realizar o exame.
+
+\input{tabelas/tab_shap_q024}
 
 Segundo, \textbf{a renda familiar mais baixa} (até 1 salário mínimo) mantém-se entre os três atributos mais relevantes em todas as edições, ao lado das demais faixas inferiores de renda e da escolaridade dos pais, em consonância com a literatura sobre o peso do capital econômico e cultural familiar no desempenho \cite{marques2023desigualdades}.
 
@@ -127,15 +137,15 @@ A hipótese H1 é confirmada em todas as seis combinações de grupo e edição:
 
 \subsection{Especificidade (H2)}
 
-No grupo Indígena, o controle negativo praticamente não altera o DI (variações de +0,004, +0,029 e +0,001 com 50\% de intensidade), enquanto a injeção direcionada o reduz substancialmente. No grupo Pardo, o controle também reduz o DI (−0,170, −0,144 e −0,121). Isso ocorre porque o volume de rótulos alterados é elevado (até 3.916, cerca de um quinto de todos os positivos do treino), o que desloca a probabilidade estimada de todos os candidatos para baixo e afeta primeiro os grupos próximos do limiar de decisão. Ainda assim, o efeito líquido atribuível ao direcionamento (Equação~\eqref{eq:efeito_liquido}) é inequívoco: entre −0,297 e −0,320 para o grupo Pardo e entre −0,119 e −0,351 para o Indígena (Tabela~\ref{tab:injecao_efeito}), confirmando a hipótese H2.
+No grupo Indígena, o controle negativo praticamente não altera o DI (variações de +0,004, +0,029 e +0,001 com 50\% de intensidade), enquanto a injeção direcionada o reduz substancialmente. No grupo Pardo, o controle também reduz o DI (−0,170, −0,144 e −0,121). Isso ocorre porque o volume de rótulos alterados é elevado (até 3.916, cerca de um quinto de todos os positivos do treino), o que desloca a probabilidade estimada de todos os candidatos para baixo e afeta primeiro os grupos próximos do limiar de decisão. Ainda assim, o efeito líquido atribuível ao direcionamento (Equação~\eqref{eq:efeito_liquido}) é negativo em todas as combinações: entre −0,297 e −0,320 para o grupo Pardo e entre −0,119 e −0,351 para o Indígena (Tabela~\ref{tab:injecao_efeito}), confirmando a hipótese H2.
 
 \input{tabelas/tab_injecao_efeito}
 
-\subsection{A cegueira das métricas convencionais (H3)}
+\subsection{Baixa sensibilidade das métricas convencionais (H3)}
 
-O resultado mais relevante do experimento é o contraste entre o comportamento do DI e o da AUC-ROC. Com 50\% de injeção no grupo Pardo, o DI despenca para valores entre 0,005 e 0,008, enquanto \textbf{a AUC-ROC recua apenas entre 0,027 e 0,032}, permanecendo acima de 0,71 nas três edições. Para o grupo Indígena, a situação é ainda mais extrema: \textbf{a AUC-ROC não se altera na terceira casa decimal}, embora o DI do grupo recue entre 53\% e 84\% em relação ao valor original. Como o grupo representa cerca de 0,5\% do conjunto de teste, nenhuma métrica agregada de desempenho é capaz de registrar um dano concentrado sobre ele.
+O resultado mais relevante do experimento é o contraste entre o comportamento do DI e o da AUC-ROC. Com 50\% de injeção no grupo Pardo, o DI despenca para valores entre 0,005 e 0,008, enquanto \textbf{a AUC-ROC recua apenas entre 0,027 e 0,032}, permanecendo acima de 0,71 nas três edições. Para o grupo Indígena, a situação é ainda mais extrema: \textbf{a AUC-ROC não se altera na terceira casa decimal}, embora o DI do grupo recue entre 53\% e 84\% em relação ao valor original. Como o grupo representa cerca de 0,5\% do conjunto de teste, um dano concentrado sobre ele tem efeito praticamente nulo sobre métricas agregadas de desempenho.
 
-Em termos práticos, um processo de validação baseado apenas em métricas convencionais aprovaria um modelo que exclui sistematicamente candidatos pardos ou indígenas. O artefato, em contrapartida, detecta o viés por três vias independentes:
+A AUC-ROC não fica, portanto, rigorosamente constante. O ponto é a \textbf{desproporção}: uma deterioração extrema da equidade corresponde a uma variação pequena, ou nula, da métrica agregada. Em termos práticos, um processo de validação baseado apenas em métricas convencionais poderia aprovar um modelo que exclui sistematicamente candidatos pardos ou indígenas. O artefato, em contrapartida, detecta o viés por três vias independentes:
 \begin{itemize}
     \item o \textbf{DI}, que dispara o alerta da regra dos quatro quintos e cai proporcionalmente à intensidade da injeção;
     \item a \textbf{TPR}, que no grupo Pardo cai de cerca de 0,5 para valores entre 0,007 e 0,012, revelando que quase nenhum candidato pardo de alto desempenho é reconhecido;
@@ -150,7 +160,7 @@ A hipótese H3 é, assim, confirmada: o artefato detecta e localiza um viés que
 
 Os resultados devem ser interpretados à luz das seguintes limitações:
 \begin{itemize}
-    \item \textbf{Grupos pequenos:} o grupo Indígena possui entre 47 e 52 candidatos no conjunto de teste, com 9 a 19 rótulos positivos, o que torna suas métricas, em especial a TPR, sujeitas a forte flutuação amostral. Exemplos são o DI de 0,417 em 2021 e o leve aumento da TPR indígena sob injeção em 2020. A apresentação de intervalos de confiança por \textit{bootstrap} é recomendada como extensão;
+    \item \textbf{Grupos pequenos:} o grupo Indígena possui entre 47 e 52 candidatos no conjunto de teste, com 9 a 19 rótulos positivos, o que torna suas métricas, em especial a TPR, sujeitas a forte flutuação amostral. Exemplos são o DI de 0,417 em 2021 e o leve aumento da TPR indígena sob injeção em 2020. Os intervalos de confiança por \textit{bootstrap} confirmam que o alerta de DI desse grupo é robusto, mas que suas estimativas de TPR são inconclusivas. Esses intervalos, por manterem o modelo fixo, não incorporam a variabilidade do treinamento;
     \item \textbf{Atributo protegido como preditor:} o modelo auditado utiliza raça/cor diretamente. Um modelo que excluísse esse atributo poderia reproduzir parte das disparidades por variáveis correlacionadas (\textit{proxies}), como renda e acesso a computador, cenário não avaliado neste trabalho;
     \item \textbf{Natureza associativa do SHAP:} os valores de Shapley descrevem o comportamento do modelo, e não relações causais entre atributos e desempenho;
     \item \textbf{Escopo do modelo:} a auditoria foi aplicada a uma única família de algoritmos (XGBoost) e a um único critério de dicotomização (mediana da NMG);

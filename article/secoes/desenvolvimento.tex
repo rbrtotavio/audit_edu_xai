@@ -103,7 +103,9 @@ A camada offline é composta por quatro módulos sequenciais, cada um com entrad
 \texttt{03\_trainer.py} & \texttt{sampled} $\rightarrow$ \texttt{xgboost\_\{ano\}.joblib} & Partição 80/20, \textit{One-Hot Encoding}, \textit{Grid Search} com validação cruzada ($k=5$, AUC-ROC) e persistência do \textit{pipeline} completo. \\ \hline
 \texttt{04\_audit\_engine.py} & modelo + \texttt{sampled} $\rightarrow$ métricas, SHAP & Reprodução do conjunto de teste; métricas de desempenho; DI, DI dos rótulos, TPR e FPR por subgrupo; matriz TreeSHAP nativa. \\ \hline
 \texttt{05\_bias\_injection.py} & modelo + \texttt{sampled} $\rightarrow$ curva de sensibilidade & Experimento de validação (Seção~\ref{sec:injecao}), reutilizando o motor de equidade do módulo 04. \\ \hline
-\texttt{06\_benchmark\_app.py} & \texttt{app.py} $\rightarrow$ tempos de resposta & Medição do requisito RNF01 em modo \textit{headless}. \\ \hline
+\texttt{06\_benchmark\_app.py} & \texttt{app.py} $\rightarrow$ tempos de resposta & Medição do requisito RNF01 em modo \textit{headless}, sem restrição e com afinidade restrita a 2 núcleos. \\ \hline
+\texttt{07\_data\_quality.py} & \texttt{raw\_filtered} $\rightarrow$ qualidade dos dados & Contagem de ausentes, valores imputados e margem de cada moda. \\ \hline
+\texttt{08\_build\_manifest.py} & todos os artefatos $\rightarrow$ manifesto & \textit{Hashes} SHA-256 dos dados brutos, intermediários, modelos e saídas, com as versões das bibliotecas. \\ \hline
 \end{tabular}
 \fonte{Elaborado pelo autor.}
 \end{quadro}
@@ -125,7 +127,9 @@ O contrato de dados de \textbf{entrada}, isto é, as colunas extraídas dos micr
 \hline
 \textbf{Arquivo} & \textbf{Conteúdo (colunas principais)} \\ \hline
 \texttt{model\_metrics\_\{ano\}} & Acurácia, precisão, recall, F1, AUC-ROC, hiperparâmetros selecionados e valor base SHAP. \\ \hline
-\texttt{fairness\_metrics\_\{ano\}} & Uma linha por subgrupo de cada atributo protegido: \textit{n}, taxa de seleção, grupo de referência, DI, alerta, taxa-base real, DI dos rótulos, amplificação, TPR, FPR e suas diferenças em relação à referência. \\ \hline
+\texttt{fairness\_metrics\_\{ano\}} & Uma linha por subgrupo de cada atributo protegido: \textit{n}, taxa de seleção, grupo de referência, DI, alerta, taxa-base real, DI dos rótulos, amplificação, TPR, FPR, suas diferenças em relação à referência e intervalos de confiança \textit{bootstrap} de 95\%. \\ \hline
+\texttt{shap\_feature\_summary\_\{ano\}} & Por atributo codificado: importância média, prevalência, contribuição média com e sem a categoria e diferença condicional. \\ \hline
+\texttt{data\_quality} & Por edição e coluna: ausentes, moda imputada, margem da moda e mediana populacional da NMG. \\ \hline
 \texttt{shap\_values\_\{ano\}} & Matriz $10.000 \times 46$ de valores SHAP (log-odds), identificador da linha na amostra e valor base. \\ \hline
 \texttt{shap\_features\_\{ano\}} & Matriz binária dos atributos codificados, alinhada linha a linha à matriz SHAP. \\ \hline
 \texttt{bias\_injection\_runs} & Uma linha por execução do experimento (240): grupo, cenário, intensidade, repetição e indicadores resultantes. \\ \hline
@@ -147,7 +151,14 @@ As decisões de engenharia voltadas ao desempenho atuam em três níveis.
 
 \textbf{Apresentação.} A interface aplica dois níveis de cache do Streamlit \cite{streamlit2026}. O primeiro guarda os Parquets de cada edição, lidos uma única vez. O segundo guarda o \textit{summary plot} SHAP, que posiciona 10.000 pontos para cada um dos 46 atributos e é a operação mais cara da página: ele é renderizado uma única vez por edição e reutilizado como imagem. Durante o desenvolvimento, a medição de desempenho mostrou que, sem esse segundo nível, o gráfico era redesenhado a cada interação e mantinha o tempo de resposta próximo do limite de 2~s, mesmo com os dados já em cache.
 
-O requisito RNF01 foi verificado pelo módulo \texttt{06\_benchmark\_app.py}, que executa a interface completa em modo \textit{headless} para cada combinação de edição e atributo: uma primeira carga com o cache vazio e cinco interações subsequentes. Os resultados constam da Tabela~\ref{tab:app_benchmark}. A primeira carga de cada edição leva entre 1,32~s e 1,37~s. As interações seguintes levam, em média, entre 0,040~s e 0,067~s, com máximo de 0,153~s. Todas as 36 execuções ficaram abaixo do limite de 2~s.
+O requisito RNF01 foi avaliado localmente pelo módulo \texttt{06\_benchmark\_app.py}. O módulo executa a interface completa em modo \textit{headless} para cada combinação de edição e atributo: uma primeira carga com o cache vazio e cinco interações subsequentes. Como a máquina de desenvolvimento dispõe de 12 núcleos lógicos, e o ambiente-alvo, de 2 vCPUs, a medição foi repetida com a afinidade do processo restrita a 2 núcleos e as bibliotecas numéricas limitadas a duas \textit{threads}. Os resultados constam da Tabela~\ref{tab:app_benchmark}:
+\begin{itemize}
+    \item sem restrição, a primeira carga de cada edição leva entre 1,45~s e 1,52~s;
+    \item com 2 núcleos, a primeira carga leva entre 1,40~s e 1,43~s;
+    \item nas duas configurações, as interações subsequentes levam em média menos de 0,07~s, com máximo de 0,158~s;
+    \item todas as 72 execuções ficaram abaixo de 2~s.
+\end{itemize}
+A restrição de núcleos não aumentou o tempo de resposta, o que é coerente com uma carga dominada por operações sequenciais de leitura e renderização. Ressalva-se que essa é uma \textbf{aproximação} do ambiente-alvo, executada na mesma CPU física e sem a virtualização e a contenção de recursos de uma plataforma compartilhada. A confirmação definitiva do requisito exige medição no próprio Hugging Face Spaces após a implantação.
 
 \input{tabelas/tab_app_benchmark}
 
@@ -161,7 +172,7 @@ A camada online foi implementada com o \textit{framework} Streamlit \cite{stream
 
 \textbf{Painel 1 --- Equidade algorítmica.} Apresenta três indicadores-resumo: o menor DI entre os subgrupos, sinalizado como ``Viés Detectado'' quando inferior a 0,8; o grupo de referência; e o limiar da regra. Em seguida, uma tabela exibe, por subgrupo, o total de candidatos, as predições positivas, a taxa de seleção, o DI (com destaque em vermelho para valores abaixo de 0,8), o DI dos rótulos reais, a TPR, a FPR e o alerta de viés (RF03 e RF04). Um gráfico de barras das taxas de seleção, com uma linha tracejada em 80\% da taxa de referência, permite identificar visualmente os grupos em situação de impacto adverso.
 
-\textbf{Painel 2 --- Explicabilidade.} Organiza-se em duas abas. A aba global exibe o \textit{summary plot} SHAP (RF05), no qual cada ponto é um candidato, a posição horizontal indica a contribuição do atributo e a cor indica seu valor. A aba local permite escolher um candidato pelo índice e exibe um \textit{waterfall plot} interativo (RF06), que decompõe sua predição, partindo do valor base, nas contribuições de cada atributo. Esse recurso materializa o tipo de explicação individual previsto no Art.~20 da LGPD \cite{brasil2018lgpd}.
+\textbf{Painel 2 --- Explicabilidade.} Organiza-se em duas abas. A aba global exibe o \textit{summary plot} SHAP (RF05), no qual cada ponto é um candidato, a posição horizontal indica a contribuição do atributo e a cor indica seu valor. A aba local permite escolher um candidato pelo índice e exibe um \textit{waterfall plot} interativo (RF06), que decompõe sua predição, partindo do valor base, nas contribuições de cada atributo. Esse recurso pode subsidiar, sem substituir, as informações sobre critérios e procedimentos da decisão automatizada a que o titular tem direito pelo Art.~20 da LGPD \cite{brasil2018lgpd}. Uma decomposição técnica da predição não equivale, por si só, a uma explicação clara e adequada ao destinatário leigo.
 
 % Sugestão ao autor: inserir aqui capturas de tela do painel (Figura: Painel de equidade; Figura: Painel SHAP),
 % salvas em figuras/dashboard_*.png, com \fonte{Elaborado pelo autor.}
@@ -195,4 +206,4 @@ O ambiente-alvo é o Hugging Face Spaces com SDK Docker, na configuração gratu
 \section{Reprodutibilidade}
 \label{sec:reprodutibilidade}
 
-A reprodutibilidade foi tratada como requisito (RNF03), e não como consequência. Todas as etapas estocásticas usam a semente 42 ou geradores dela derivados. Os parâmetros fixos do projeto estão documentados em um contrato de dados versionado no repositório. Além disso, as tabelas e figuras do Capítulo~\ref{cap:resultados} não são transcritas manualmente: um \textit{script} lê os arquivos Parquet e gera o código \LaTeX\ correspondente. Assim, a sequência ``executar o pipeline, gerar as tabelas e compilar o documento'' reproduz integralmente os números apresentados nesta monografia, e qualquer divergência entre texto e artefato torna-se detectável.
+A reprodutibilidade foi tratada como requisito (RNF03), e não como consequência. Todas as etapas estocásticas usam a semente 42 ou geradores dela derivados. Os parâmetros fixos do projeto estão documentados em um contrato de dados versionado no repositório. O módulo \texttt{08\_build\_manifest.py} registra em um manifesto os \textit{hashes} SHA-256 de todos os arquivos de dados, dos modelos e dos artefatos de saída, junto com as versões das bibliotecas, permitindo verificar se uma reexecução partiu exatamente das mesmas entradas. Além disso, as tabelas e figuras do Capítulo~\ref{cap:resultados} não são transcritas manualmente: um \textit{script} lê os arquivos Parquet e gera o código \LaTeX\ correspondente. Assim, a sequência ``executar o pipeline, gerar as tabelas e compilar o documento'' reproduz integralmente os números apresentados nesta monografia, e qualquer divergência entre texto e artefato torna-se detectável.

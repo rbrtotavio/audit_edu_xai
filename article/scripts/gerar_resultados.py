@@ -168,32 +168,43 @@ write_tex("tab_desempenho", r"""\begin{table}[htbp]
 # ---------------------------------------------------------------------------
 # Tabela 2 — Raça/cor: DI, TPR, FPR
 # ---------------------------------------------------------------------------
+def ci(lo, hi, nd=3):
+    """Intervalo de confiança formatado; '--' quando indefinido."""
+    if pd.isna(lo) or pd.isna(hi):
+        return "--"
+    return f"[{br(lo, nd)}; {br(hi, nd)}]"
+
+
 body = []
 for y in YEARS:
-    body.append(rf"\multicolumn{{7}}{{l}}{{\textbf{{ENEM {y}}}}} \\")
+    body.append(rf"\multicolumn{{8}}{{l}}{{\textbf{{ENEM {y}}}}} \\")
     sub = raca[raca.year == y].set_index("group")
     for g in RACA_ORDER:
         r = sub.loc[g]
-        ref = r" (ref.)" if g == r.reference_group else ""
+        is_ref = g == r.reference_group
+        ref = r" (ref.)" if is_ref else ""
         alert = r"\textbf{Sim}" if r.alert_di_low else "Não"
+        di_ci = "--" if is_ref else ci(r.di_ci_low, r.di_ci_high)
         body.append(
-            f"\\quad {RACA[g]}{ref} & {br_int(r.total_count)} & {br(r.selection_rate)} & {br(r.disparate_impact)} & "
-            f"{br(r.tpr)} & {br(r.fpr)} & {alert} \\\\"
+            f"\\quad {RACA[g]}{ref} & {br_int(r.total_count)} & {br_int(r.true_positive_label_count)} & "
+            f"{br(r.disparate_impact)} & {di_ci} & {br(r.tpr)} & {ci(r.tpr_ci_low, r.tpr_ci_high)} & {alert} \\\\"
         )
     if y != YEARS[-1]:
         body.append(r"\midrule")
+B_BOOT = int(raca.bootstrap_b.iloc[0])
 write_tex("tab_di_raca", r"""\begin{table}[htbp]
 \centering
-\caption{Impacto Disparate e taxas de erro por raça/cor no conjunto de teste}
+\caption{Impacto Disparate e Igualdade de Oportunidades por raça/cor no conjunto de teste, com intervalos de confiança de 95\%}
 \label{tab:di_raca}
-\begin{tabular}{lcccccc}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccccc}
 \toprule
-\textbf{Grupo} & \textbf{$n$} & \textbf{Taxa de seleção} & \textbf{DI} & \textbf{TPR} & \textbf{FPR} & \textbf{DI $<$ 0,8} \\
+\textbf{Grupo} & \textbf{$n$} & \textbf{$n$ ($Y=1$)} & \textbf{DI} & \textbf{IC95\% DI} & \textbf{TPR} & \textbf{IC95\% TPR} & \textbf{DI $<$ 0,8} \\
 \midrule
 """ + "\n".join(body) + r"""
 \bottomrule
-\end{tabular}
-\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Grupo de referência: maior taxa de seleção.}
+\end{tabular}}
+\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Grupo de referência: maior taxa de seleção. IC95\%: percentis 2,5 e 97,5 de """ + br_int(B_BOOT) + r""" reamostragens \textit{bootstrap} do conjunto de teste, com o modelo fixo. A FPR por grupo é apresentada na Figura~\ref{fig:tpr_fpr}.}
 \end{table}
 """)
 
@@ -358,22 +369,87 @@ bench = pd.read_parquet(OUT / "app_benchmark.parquet")
 ATTR_LBL = {"TP_COR_RACA": "Raça/cor", "Q006": "Renda (Q006)"}
 body = []
 for (y, a), g in bench.groupby(["year", "protected_attribute"], sort=True):
-    cold = g[g["mode"] == "cold"].seconds.iloc[0]
-    warm = g[g["mode"] == "warm"].seconds
-    body.append(f"{y} & {ATTR_LBL[a]} & {br(cold, 2)} & {br(warm.mean(), 3)} & {br(warm.max(), 3)} & {br(g.outputs_size_mb.iloc[0], 2)} \\\\")
+    cells = []
+    for lim in ["all", "2"]:
+        h = g[g["cpu_limit"] == lim]
+        cold = h[h["mode"] == "cold"].seconds.iloc[0]
+        warm = h[h["mode"] == "warm"].seconds
+        cells += [br(cold, 2), br(warm.mean(), 3), br(warm.max(), 3)]
+    body.append(f"{y} & {ATTR_LBL[a]} & " + " & ".join(cells) + f" & {br(g.outputs_size_mb.iloc[0], 2)} \\\\")
 n_ok, n_all = int(bench.within_sla.sum()), len(bench)
+n_cpu_all = int(bench[bench.cpu_limit == "all"].affinity_cpus.iloc[0])
 write_tex("tab_app_benchmark", r"""\begin{table}[htbp]
 \centering
-\caption{Tempo de execução da interface por interação (segundos)}
+\caption{Tempo de execução da interface por interação (segundos), sem restrição e com 2 núcleos}
 \label{tab:app_benchmark}
-\begin{tabular}{llcccc}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llccccccc}
 \toprule
-\textbf{Edição} & \textbf{Atributo} & \textbf{Primeira carga} & \textbf{Interação (média)} & \textbf{Interação (máx.)} & \textbf{Parquets (MB)} \\
+ & & \multicolumn{3}{c}{\textbf{""" + f"{n_cpu_all}" + r""" núcleos lógicos}} & \multicolumn{3}{c}{\textbf{2 núcleos (afinidade restrita)}} & \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+\textbf{Edição} & \textbf{Atributo} & \textbf{1.ª carga} & \textbf{Inter. (média)} & \textbf{Inter. (máx.)} & \textbf{1.ª carga} & \textbf{Inter. (média)} & \textbf{Inter. (máx.)} & \textbf{Parquets (MB)} \\
+\midrule
+""" + "\n".join(body) + r"""
+\bottomrule
+\end{tabular}}
+\fonte{Elaborado pelo autor a partir de \texttt{app\_benchmark.parquet}. """ + f"{n_ok} de {n_all}" + r""" execuções abaixo de 2~s. Ambiente local: """ + f"{bench.platform.iloc[0].split('-')[0]} {bench.platform.iloc[0].split('-')[1]}, Python {bench.python.iloc[0]}, Streamlit {bench.streamlit.iloc[0]}" + r""". A restrição a 2 núcleos aproxima, mas não reproduz, o ambiente de 2 vCPUs do Hugging Face Spaces.}
+\end{table}
+""")
+
+# ---------------------------------------------------------------------------
+# Tabela 9 — SHAP condicional de Q024_A (shap_feature_summary_{ano}.parquet)
+# ---------------------------------------------------------------------------
+body = []
+for y in YEARS:
+    s = pd.read_parquet(OUT / f"shap_feature_summary_{y}.parquet").set_index("feature")
+    r = s.loc[[f for f in s.index if f.endswith("Q024_A")][0]]
+    body.append(f"{y} & {br(r.prevalence)} & {br(r.mean_abs_phi)} & {br(r.mean_phi_when_1)} & "
+                f"{br(r.mean_phi_when_0)} & {br(r.conditional_gap)} \\\\")
+write_tex("tab_shap_q024", r"""\begin{table}[htbp]
+\centering
+\caption{Decomposição da importância SHAP do atributo ``sem computador'' (Q024 = A) por edição}
+\label{tab:shap_q024}
+\begin{tabular}{cccccc}
+\toprule
+\textbf{Edição} & \textbf{Prevalência} & $\overline{|\phi|}$ & $\bar{\phi}$ \textbf{(sem comp.)} & $\bar{\phi}$ \textbf{(com comp.)} & \textbf{Diferença} \\
 \midrule
 """ + "\n".join(body) + r"""
 \bottomrule
 \end{tabular}
-\fonte{Elaborado pelo autor a partir de \texttt{app\_benchmark.parquet}. """ + f"{n_ok} de {n_all}" + r""" execuções abaixo de 2~s. Ambiente: """ + f"{bench.platform.iloc[0].split('-')[0]} {bench.platform.iloc[0].split('-')[1]}, {int(bench.cpu_count.iloc[0])} CPUs lógicas, Python {bench.python.iloc[0]}, Streamlit {bench.streamlit.iloc[0]}" + r""".}
+\fonte{Elaborado pelo autor a partir de \texttt{shap\_feature\_summary\_\{ano\}.parquet}. Prevalência: proporção de candidatos sem computador no teste. Diferença: $\bar{\phi}$ (com comp.) $-$ $\bar{\phi}$ (sem comp.), em log-odds.}
+\end{table}
+""")
+
+# ---------------------------------------------------------------------------
+# Tabela 10 — Qualidade dos dados e imputação (data_quality.parquet)
+# ---------------------------------------------------------------------------
+dq = pd.read_parquet(OUT / "data_quality.parquet")
+body = []
+for y in YEARS:
+    d = dq[dq.year == y]
+    first = d.iloc[0]
+    quest = d[d.column != "TP_COR_RACA"]
+    weakest = d.loc[d.mode_margin_count.idxmin()]
+    body.append(
+        f"{y} & {br_int(first.n_filtered)} & {br_int(first.n_all_questionnaire_null)} & "
+        f"{br(100 * first.n_all_questionnaire_null / first.n_filtered, 2)}\\% & "
+        f"{br(100 * first.test_fraction_of_imputation_base, 2)}\\% & "
+        f"\\texttt{{{weakest.column.replace('_', chr(92) + '_')}}} ({br_int(weakest.mode_margin_count)}) & "
+        f"{'Sim' if d.mode_robust_to_test_removal.all() else 'Não'} \\\\"
+    )
+write_tex("tab_qualidade_dados", r"""\begin{table}[htbp]
+\centering
+\caption{Valores ausentes no questionário e robustez da imputação pela moda}
+\label{tab:qualidade_dados}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{ccccccc}
+\toprule
+\textbf{Edição} & \textbf{Participantes} & \textbf{Questionário nulo} & \textbf{\% nulos} & \textbf{Teste / base} & \textbf{Menor margem da moda} & \textbf{Moda robusta} \\
+\midrule
+""" + "\n".join(body) + r"""
+\bottomrule
+\end{tabular}}
+\fonte{Elaborado pelo autor a partir de \texttt{data\_quality.parquet}. Questionário nulo: registros com Q001, Q002, Q006, Q024 e Q025 simultaneamente ausentes. Teste / base: fração que o conjunto de teste (10.000) representa na população usada para calcular a moda. Menor margem: diferença, em número de registros, entre a moda e a segunda categoria mais frequente na coluna mais apertada. Moda robusta: a margem supera 10.000 em todas as colunas, de modo que o teste não poderia alterar a moda.}
 \end{table}
 """)
 

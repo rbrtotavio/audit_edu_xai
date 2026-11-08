@@ -12,8 +12,8 @@ O objetivo geral foi atingido: a ferramenta detecta, quantifica e explica vieses
     \item \textbf{Modelo-alvo:} classificadores XGBoost foram otimizados por validação cruzada e avaliados em conjunto de teste isolado, com AUC-ROC em torno de 0,75 (Seção~\ref{sec:res_desempenho});
     \item \textbf{Motor de equidade:} o artefato calcula Paridade Demográfica, Impacto Disparate, DI dos rótulos reais, TPR e FPR exclusivamente sobre dados não vistos no treinamento (Seções~\ref{sec:res_raca} a~\ref{sec:res_amplificacao});
     \item \textbf{Explicabilidade:} a camada TreeSHAP quantifica a contribuição de cada atributo, global e localmente (Seção~\ref{sec:res_shap});
-    \item \textbf{Interface:} o painel Streamlit atende a todos os requisitos funcionais com tempo de resposta inferior a 2~s em todas as execuções medidas (Seção~\ref{sec:desempenho});
-    \item \textbf{Validação:} o experimento de injeção sintética de viés confirmou as três hipóteses de sensibilidade, especificidade e cegueira das métricas convencionais (Seção~\ref{sec:res_injecao}).
+    \item \textbf{Interface:} o painel Streamlit atende a todos os requisitos funcionais com tempo de resposta inferior a 2~s em todas as execuções medidas em ambiente local, inclusive com o processamento restrito a 2 núcleos (Seção~\ref{sec:desempenho});
+    \item \textbf{Validação:} o experimento de injeção sintética de viés confirmou as três hipóteses: sensibilidade, especificidade e baixa sensibilidade das métricas convencionais (Seção~\ref{sec:res_injecao}).
 \end{itemize}
 
 % ---------------------------------------------------------------------------
@@ -21,13 +21,13 @@ O objetivo geral foi atingido: a ferramenta detecta, quantifica e explica vieses
 
 As contribuições do trabalho situam-se em três dimensões.
 
-\textbf{Contribuição tecnológica.} Um artefato de código aberto que combina, em um mesmo fluxo, métricas de equidade de grupo, decomposição do viés entre dados e modelo, explicações TreeSHAP e uma interface acessível a usuários sem formação em programação. Sua arquitetura desacoplada, com pré-cálculo em lote e leitura de arquivos estáticos, demonstra que a auditoria algorítmica pode ser oferecida em infraestrutura de custo nulo. O padrão é replicável para outras bases públicas.
+\textbf{Contribuição tecnológica.} Um artefato de código aberto que combina, em um mesmo fluxo, métricas de equidade de grupo, decomposição do viés entre dados e modelo, explicações TreeSHAP e uma interface acessível a usuários sem formação em programação. Sua arquitetura desacoplada, com pré-cálculo em lote e leitura de arquivos estáticos, indica que a auditoria algorítmica pode ser oferecida em infraestrutura de baixo custo. O padrão é replicável para outras bases públicas.
 
 \textbf{Contribuição empírica.} A aplicação aos dados de 2019 a 2021 produziu três achados substantivos:
 \begin{itemize}
     \item um modelo com desempenho moderado viola a regra dos quatro quintos para todos os grupos não brancos e para candidatos com renda familiar de até 2,5 salários mínimos, nas três edições;
     \item o modelo \textbf{amplifica} a disparidade presente nos dados, chegando a criar impacto adverso em grupos que satisfaziam a regra nos rótulos reais;
-    \item a ausência de computador na residência é o atributo mais influente nas predições, e sua importância cresce ao longo do período da pandemia, o que sugere o agravamento da exclusão digital como determinante do desempenho.
+    \item a ausência de computador na residência é o atributo mais influente nas predições, e sua importância cresce entre 2019 e 2021, em coincidência temporal com o ensino remoto da pandemia. O achado é compatível com a hipótese de agravamento da exclusão digital, embora não permita inferência causal.
 \end{itemize}
 
 \textbf{Contribuição metodológica.} Um protocolo de validação por injeção de viés com controle negativo pareado e efeito líquido, que separa o efeito do viés direcionado do efeito genérico de alterar a prevalência de rótulos. O protocolo evidenciou que, sob um viés que leva o DI de um grupo a praticamente zero, a AUC-ROC varia no máximo 0,032, e para grupos pequenos não varia. Esse resultado mostra concretamente por que a avaliação de modelos aplicados a populações heterogêneas não pode se limitar a métricas agregadas de desempenho.
@@ -49,7 +49,9 @@ As limitações, detalhadas na Seção~\ref{sec:res_limitacoes}, podem ser resum
 
 Os resultados abrem as seguintes linhas de continuidade:
 \begin{itemize}
-    \item \textbf{Incerteza estatística:} incorporar intervalos de confiança por \textit{bootstrap} \cite{efron1993bootstrap} às métricas de equidade, priorizando grupos pequenos;
+    \item \textbf{Incerteza estatística:} estender os intervalos de confiança, que hoje refletem apenas a variabilidade do conjunto de teste, a um \textit{bootstrap} com retreinamento \cite{efron1993bootstrap}, e ampliar a amostra dos grupos minoritários por sobreamostragem estratificada;
+    \item \textbf{Tratamento de não respostas:} substituir a imputação pela moda por uma categoria explícita de ``não resposta'' ao questionário;
+    \item \textbf{Validação em produção:} medir o tempo de resposta no próprio ambiente de implantação;
     \item \textbf{Viés por variáveis \textit{proxy}:} auditar um modelo treinado \textbf{sem} o atributo raça/cor, para medir quanto da disparidade persiste por meio de variáveis correlacionadas \cite{dwork2012fairness};
     \item \textbf{Mitigação:} integrar técnicas de pré-processamento, como a reponderação de instâncias \cite{kamiran2012data}, e de pós-processamento, como limiares por grupo \cite{hardt2016equality}, e exibir o \textit{trade-off} entre desempenho e equidade na própria interface;
     \item \textbf{Interseccionalidade:} avaliar subgrupos definidos pela combinação de atributos, como raça/cor e renda, nos quais disparidades podem ser maiores que as observadas em cada atributo isolado \cite{buolamwini2018gender};

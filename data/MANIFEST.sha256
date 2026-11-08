@@ -1,0 +1,82 @@
+# AuditEdu-XAI — manifesto de integridade SHA-256 (formato sha256sum)
+# Gerado em: 2026-11-08T01:42:38-03:00
+# Plataforma: Windows-11-10.0.26200-SP0
+# Python: 3.12.4
+# pandas: 2.3.3
+# numpy: 1.26.4
+# pyarrow: 25.0.1
+# xgboost: 3.4.1
+# scikit-learn: 1.9.1
+# shap: 0.49.1
+# streamlit: 1.65.0
+# Verificar (na raiz do projeto): grep -v '^#' data/MANIFEST.sha256 | sha256sum -c
+#
+# --- data/raw/*.csv (3 arquivos) ---
+# data/raw/MICRODADOS_ENEM_2019.csv  2407957577 bytes
+035490d43ebe8beca6cbf2e2e447f65cb97d32215684a07c820e0d70f0bc2184  data/raw/MICRODADOS_ENEM_2019.csv
+# data/raw/MICRODADOS_ENEM_2020.csv  2024556838 bytes
+beaae01541b8191b503fa86a40d356dac556151b84cbe241936a3cbb75c5ad76  data/raw/MICRODADOS_ENEM_2020.csv
+# data/raw/MICRODADOS_ENEM_2021.csv  1507939871 bytes
+84c1106219d195e458875be8e454d24cafc6424aeabea00a331bdd5cc5ac95d4  data/raw/MICRODADOS_ENEM_2021.csv
+#
+# --- data/processed/*.parquet (6 arquivos) ---
+# data/processed/raw_filtered_2019.parquet  35157642 bytes
+6a58d56a25263af29bfb1d7417a0b18204d349301cf7aa12ec16d8a128434ac3  data/processed/raw_filtered_2019.parquet
+# data/processed/raw_filtered_2020.parquet  25219636 bytes
+c031ae3a3eda54450c9b70ef15f020970a55479bb0838d53bd290329a1082a07  data/processed/raw_filtered_2020.parquet
+# data/processed/raw_filtered_2021.parquet  21584888 bytes
+98e0aa044888794f6d619794502a9c5c2d34c7f63ef040cb9db9de23262b85dd  data/processed/raw_filtered_2021.parquet
+# data/processed/sampled_2019.parquet  715860 bytes
+92b27d630c9c6d21f1de0e3ce8c32e5065845c6f4ff156646702eb4d1dba1421  data/processed/sampled_2019.parquet
+# data/processed/sampled_2020.parquet  729367 bytes
+7e29699331e3bb7ddc3acd3dbdeb4eb63a6871e64fff7aebe9ca64adbdff8ea2  data/processed/sampled_2020.parquet
+# data/processed/sampled_2021.parquet  725958 bytes
+a33a0cac3bfb072ad2d38ba98a56d770e3a4a79959718512b5ebe2ed459b2480  data/processed/sampled_2021.parquet
+#
+# --- models/*.joblib (3 arquivos) ---
+# models/xgboost_2019.joblib  128507 bytes
+22f75631d1e735b52b23e33fe2a3f9d141af177e2acc9a1ad3ff28028813c85e  models/xgboost_2019.joblib
+# models/xgboost_2020.joblib  128377 bytes
+5fa627e19051b01c556b27d2b06650563d45eecec698d3ae2c41a1929ab77027  models/xgboost_2020.joblib
+# models/xgboost_2021.joblib  128921 bytes
+f0d235397cabdf762d9ab801e1349e3ecf29a1fea41ba467e5e9e5f3004122b7  models/xgboost_2021.joblib
+#
+# --- data/outputs/*.parquet (19 arquivos) ---
+# data/outputs/app_benchmark.parquet  9754 bytes
+522c390d97dc31af883c9accac2f3e941ceef62515f4e2255bbef8af28d2c036  data/outputs/app_benchmark.parquet
+# data/outputs/bias_injection_runs.parquet  24913 bytes
+6cbdd4329688bbe98a27977b2a97644d4a9f6cc2be76b7aba65400ad9561fee4  data/outputs/bias_injection_runs.parquet
+# data/outputs/bias_injection_summary.parquet  19821 bytes
+a2e1e275aab30dc3294e0d5ffbb6417ab740dc2f3c8b941269b2155f986fd9d8  data/outputs/bias_injection_summary.parquet
+# data/outputs/data_quality.parquet  12249 bytes
+e7c7f5ce8aa09457611901627f337a13be544db5bbe9b0f9ff0e3c313291f641  data/outputs/data_quality.parquet
+# data/outputs/fairness_metrics_2019.parquet  22172 bytes
+d0d62f5ba1a366cab15e17f836773cb2273739f0cf68013200961ad386f39f15  data/outputs/fairness_metrics_2019.parquet
+# data/outputs/fairness_metrics_2020.parquet  22025 bytes
+621d21ddaaac93dab85289d1ea2bfd276787c7d15fc2ae6c6e5ce03c52c830be  data/outputs/fairness_metrics_2020.parquet
+# data/outputs/fairness_metrics_2021.parquet  22332 bytes
+c91efa4624b3be44803d9cc5efa9e989e41522ff68e0ca0c7fe40cdf94c0249a  data/outputs/fairness_metrics_2021.parquet
+# data/outputs/model_metrics_2019.parquet  7425 bytes
+68465916369835a570a16dbaa5686b33427c6b9546f605f72b10ff2cf90dfdef  data/outputs/model_metrics_2019.parquet
+# data/outputs/model_metrics_2020.parquet  7425 bytes
+af465f4df5dbc4991712385b65076e9ba891a9b92db6c50b7db1c4a248dfed8a  data/outputs/model_metrics_2020.parquet
+# data/outputs/model_metrics_2021.parquet  7425 bytes
+c4d6f34baa1b3d9681d93621cabe6017ec08c6301e95a098ca612f5bb675811a  data/outputs/model_metrics_2021.parquet
+# data/outputs/shap_feature_summary_2019.parquet  8638 bytes
+83d4774b916250e1bd026918be93b55fbf1342ecf26e14001e2ee06daa1787fe  data/outputs/shap_feature_summary_2019.parquet
+# data/outputs/shap_feature_summary_2020.parquet  8675 bytes
+2f6e240d552135902793c3ce7e5c8f0b07ec21840e10e2c85c36ad5b5eb6e5ac  data/outputs/shap_feature_summary_2020.parquet
+# data/outputs/shap_feature_summary_2021.parquet  8673 bytes
+049143cd55caaa0d50a18592b772ea8e363204b6dccc5b10200c1ade1efafaa1  data/outputs/shap_feature_summary_2021.parquet
+# data/outputs/shap_features_2019.parquet  134720 bytes
+90addd5b961f0f08c23442a9c03fb825d1d99b86d79c2a6c7cc6044ff5dbae9f  data/outputs/shap_features_2019.parquet
+# data/outputs/shap_features_2020.parquet  134820 bytes
+ff2d2564779f542332bca64d24b84dcfc134dd4c148e424d7f8b1ce50684e604  data/outputs/shap_features_2020.parquet
+# data/outputs/shap_features_2021.parquet  136450 bytes
+3a3b53c4fdb6f0474fd6b38b00e01d57ede2a6957a5cab5d81431d96009f9eea  data/outputs/shap_features_2021.parquet
+# data/outputs/shap_values_2019.parquet  682096 bytes
+af915ef2870be9fcc706d4e26dc11c73566b191dfbfd1b52f086d1d62f679434  data/outputs/shap_values_2019.parquet
+# data/outputs/shap_values_2020.parquet  709132 bytes
+7415a8daba4efea6876e64118cbcc79c065bca88e1469fc1980e6ac30ae61874  data/outputs/shap_values_2020.parquet
+# data/outputs/shap_values_2021.parquet  670796 bytes
+a383bf61a7ccd8cb39c2f1c8cbacdd071c073aec3feab5ab926a0453a10d180b  data/outputs/shap_values_2021.parquet

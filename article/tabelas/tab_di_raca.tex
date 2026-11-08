@@ -2,36 +2,37 @@
 % Fonte: data/outputs/*.parquet — NÃO EDITAR À MÃO.
 \begin{table}[htbp]
 \centering
-\caption{Impacto Disparate e taxas de erro por raça/cor no conjunto de teste}
+\caption{Impacto Disparate e Igualdade de Oportunidades por raça/cor no conjunto de teste, com intervalos de confiança de 95\%}
 \label{tab:di_raca}
-\begin{tabular}{lcccccc}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccccc}
 \toprule
-\textbf{Grupo} & \textbf{$n$} & \textbf{Taxa de seleção} & \textbf{DI} & \textbf{TPR} & \textbf{FPR} & \textbf{DI $<$ 0,8} \\
+\textbf{Grupo} & \textbf{$n$} & \textbf{$n$ ($Y=1$)} & \textbf{DI} & \textbf{IC95\% DI} & \textbf{TPR} & \textbf{IC95\% TPR} & \textbf{DI $<$ 0,8} \\
 \midrule
-\multicolumn{7}{l}{\textbf{ENEM 2019}} \\
-\quad Branca (ref.) & 3.723 & 0,686 & 1,000 & 0,801 & 0,492 & Não \\
-\quad Preta & 1.219 & 0,292 & 0,426 & 0,469 & 0,174 & \textbf{Sim} \\
-\quad Parda & 4.581 & 0,340 & 0,495 & 0,521 & 0,205 & \textbf{Sim} \\
-\quad Amarela & 225 & 0,418 & 0,609 & 0,623 & 0,235 & \textbf{Sim} \\
-\quad Indígena & 52 & 0,173 & 0,252 & 0,316 & 0,091 & \textbf{Sim} \\
-\quad Não declarada & 200 & 0,425 & 0,620 & 0,580 & 0,227 & \textbf{Sim} \\
+\multicolumn{8}{l}{\textbf{ENEM 2019}} \\
+\quad Branca (ref.) & 3.723 & 2.341 & 1,000 & -- & 0,801 & [0,784; 0,817] & Não \\
+\quad Preta & 1.219 & 488 & 0,426 & [0,387; 0,465] & 0,469 & [0,424; 0,515] & \textbf{Sim} \\
+\quad Parda & 4.581 & 1.954 & 0,495 & [0,472; 0,518] & 0,521 & [0,498; 0,542] & \textbf{Sim} \\
+\quad Amarela & 225 & 106 & 0,609 & [0,517; 0,705] & 0,623 & [0,531; 0,710] & \textbf{Sim} \\
+\quad Indígena & 52 & 19 & 0,252 & [0,115; 0,414] & 0,316 & [0,125; 0,545] & \textbf{Sim} \\
+\quad Não declarada & 200 & 112 & 0,620 & [0,522; 0,720] & 0,580 & [0,491; 0,675] & \textbf{Sim} \\
 \midrule
-\multicolumn{7}{l}{\textbf{ENEM 2020}} \\
-\quad Branca (ref.) & 3.793 & 0,725 & 1,000 & 0,842 & 0,527 & Não \\
-\quad Preta & 1.227 & 0,265 & 0,365 & 0,418 & 0,165 & \textbf{Sim} \\
-\quad Parda & 4.505 & 0,335 & 0,462 & 0,505 & 0,210 & \textbf{Sim} \\
-\quad Amarela & 230 & 0,361 & 0,498 & 0,496 & 0,221 & \textbf{Sim} \\
-\quad Indígena & 49 & 0,122 & 0,169 & 0,167 & 0,108 & \textbf{Sim} \\
-\quad Não declarada & 196 & 0,459 & 0,633 & 0,627 & 0,277 & \textbf{Sim} \\
+\multicolumn{8}{l}{\textbf{ENEM 2020}} \\
+\quad Branca (ref.) & 3.793 & 2.386 & 1,000 & -- & 0,842 & [0,827; 0,856] & Não \\
+\quad Preta & 1.227 & 483 & 0,365 & [0,331; 0,400] & 0,418 & [0,373; 0,460] & \textbf{Sim} \\
+\quad Parda & 4.505 & 1.909 & 0,462 & [0,441; 0,484] & 0,505 & [0,483; 0,528] & \textbf{Sim} \\
+\quad Amarela & 230 & 117 & 0,498 & [0,417; 0,587] & 0,496 & [0,406; 0,589] & \textbf{Sim} \\
+\quad Indígena & 49 & 12 & 0,169 & [0,048; 0,310] & 0,167 & [0,000; 0,429] & \textbf{Sim} \\
+\quad Não declarada & 196 & 102 & 0,633 & [0,539; 0,735] & 0,627 & [0,533; 0,726] & \textbf{Sim} \\
 \midrule
-\multicolumn{7}{l}{\textbf{ENEM 2021}} \\
-\quad Branca (ref.) & 4.427 & 0,715 & 1,000 & 0,830 & 0,530 & Não \\
-\quad Preta & 1.104 & 0,241 & 0,337 & 0,343 & 0,182 & \textbf{Sim} \\
-\quad Parda & 4.022 & 0,302 & 0,423 & 0,477 & 0,182 & \textbf{Sim} \\
-\quad Amarela & 211 & 0,474 & 0,663 & 0,706 & 0,225 & \textbf{Sim} \\
-\quad Indígena & 47 & 0,298 & 0,417 & 0,778 & 0,184 & \textbf{Sim} \\
-\quad Não declarada & 189 & 0,450 & 0,629 & 0,602 & 0,302 & \textbf{Sim} \\
+\multicolumn{8}{l}{\textbf{ENEM 2021}} \\
+\quad Branca (ref.) & 4.427 & 2.730 & 1,000 & -- & 0,830 & [0,816; 0,844] & Não \\
+\quad Preta & 1.104 & 405 & 0,337 & [0,302; 0,373] & 0,343 & [0,298; 0,390] & \textbf{Sim} \\
+\quad Parda & 4.022 & 1.643 & 0,423 & [0,401; 0,444] & 0,477 & [0,453; 0,501] & \textbf{Sim} \\
+\quad Amarela & 211 & 109 & 0,663 & [0,570; 0,759] & 0,706 & [0,617; 0,792] & \textbf{Sim} \\
+\quad Indígena & 47 & 9 & 0,417 & [0,231; 0,613] & 0,778 & [0,429; 1,000] & \textbf{Sim} \\
+\quad Não declarada & 189 & 93 & 0,629 & [0,530; 0,731] & 0,602 & [0,500; 0,703] & \textbf{Sim} \\
 \bottomrule
-\end{tabular}
-\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Grupo de referência: maior taxa de seleção.}
+\end{tabular}}
+\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Grupo de referência: maior taxa de seleção. IC95\%: percentis 2,5 e 97,5 de 2.000 reamostragens \textit{bootstrap} do conjunto de teste, com o modelo fixo. A FPR por grupo é apresentada na Figura~\ref{fig:tpr_fpr}.}
 \end{table}
