@@ -134,8 +134,11 @@ def add_legend_line(fig, name, color=INK, dash="dash", width=1.5):
 
 
 def style_fig(fig, height=None):
-    fig.update_layout(separators=",.", margin=dict(l=10, r=10, t=50, b=10), plot_bgcolor="white",
-                      font=dict(color=INK), legend=dict(orientation="h", y=-0.18))
+    # A legenda é ancorada na borda inferior do CONTÊINER (yref="container"), não em fração da área do
+    # gráfico: assim ela nunca invade o título do eixo x, qualquer que seja a altura do gráfico.
+    fig.update_layout(separators=",.", margin=dict(l=10, r=10, t=50, b=85), plot_bgcolor="white",
+                      font=dict(color=INK),
+                      legend=dict(orientation="h", yref="container", y=0.0, yanchor="bottom", x=0, xanchor="left"))
     fig.update_xaxes(gridcolor="#ececec", zeroline=False)
     fig.update_yaxes(gridcolor="#ececec", zeroline=False)
     if height:
@@ -284,13 +287,13 @@ with tab_eq:
             hovertemplate="<b>%{y}</b><br>%{customdata[0]}<br>DI: %{customdata[2]}<br>"
                           "IC 95%: %{customdata[1]}<br>Candidatos no teste: %{customdata[3]}<extra></extra>",
         ))
-        # Rótulos posicionados DEPOIS da ponta do intervalo de confiança: não colidem com a linha do IC
+        # Rótulos posicionados DEPOIS da ponta do intervalo de confiança (não colidem com a linha do IC) e com
+        # fundo branco, para que a linha tracejada do limiar passe POR TRÁS do texto em vez de cortá-lo.
         label_x = pd.concat([fair["disparate_impact"] + err_plus, fair["disparate_impact"]], axis=1).max(axis=1) + 0.02
-        fig.add_trace(go.Scatter(
-            x=label_x, y=fair["label"], mode="text", showlegend=False, hoverinfo="skip",
-            text=[f"{s.split()[0]} {br(v)}" for s, v in zip(fair["status"], fair["disparate_impact"])],
-            textposition="middle right"))
-        fig.add_vline(x=DI_THRESHOLD, line_dash="dash", line_color=INK, line_width=1.5)
+        for lx, lab, s, v in zip(label_x, fair["label"], fair["status"], fair["disparate_impact"]):
+            fig.add_annotation(x=lx, y=lab, text=f"{s.split()[0]} {br(v)}", showarrow=False, xanchor="left",
+                               bgcolor="rgba(255,255,255,0.92)", borderpad=1, font=dict(size=12, color=INK))
+        fig.add_vline(x=DI_THRESHOLD, line_dash="dash", line_color=INK, line_width=1.5, layer="below")
         add_legend_line(fig, "Limiar 0,8 (regra dos 4/5)")
         add_legend_line(fig, "Intervalo de confiança 95%", color=GRAY, dash="solid", width=2)
         fig.update_layout(title="Impacto Disparate por grupo", xaxis_title="Impacto Disparate",
@@ -468,9 +471,11 @@ with tab_xai:
         c_prof, c_pred = st.columns([3, 1])
         c_prof.markdown("**Perfil do candidato** (identificado só pelo índice; dados anonimizados)  \n" +
                         " · ".join(f"**{k}:** {v}" for k, v in profile.items()))
-        c_pred.metric("Chance estimada de ficar acima da mediana", pct(prob),
-                      delta="previsto: acima" if prob >= 0.5 else "previsto: abaixo",
-                      delta_color="off", border=True)
+        c_pred.metric("Chance estimada", pct(prob),
+                      delta="previsto: acima da mediana" if prob >= 0.5 else "previsto: abaixo da mediana",
+                      delta_color="off", border=True,
+                      help="Probabilidade, segundo o modelo, de o candidato ficar acima da mediana da Nota Média "
+                           "Geral da edição. Obtida somando ao ponto de partida as contribuições SHAP abaixo.")
 
         top = phi.reindex(phi.abs().sort_values(ascending=False).index)
         shown, rest = top.head(8), top.iloc[8:]
@@ -524,7 +529,9 @@ with tab_inj:
         m3.metric("Efeito líquido do direcionamento", br(at50["di_net_effect"]), border=True,
                   help="Queda do DI na injeção menos a queda no controle, com 50% de intensidade.")
 
-        xs = [f"{int(100 * p)}%" for p in injc["intensity"]]
+        # Eixo numérico (espaçamento proporcional à intensidade) com marcas explícitas e sufixo "%"
+        xs = [int(round(100 * p)) for p in injc["intensity"]]
+        x_axis = dict(tickvals=xs, ticktext=[f"{x}%" for x in xs], range=[-3, max(xs) + 3])
         c_di, c_auc = st.columns(2)
         fig_i = go.Figure()
         for df_, name, dash, sym in [(injc, "Injeção direcionada", "solid", "circle"), (ctrl, "Controle negativo", "dash", "circle-open")]:
@@ -533,18 +540,18 @@ with tab_inj:
                                        marker=dict(size=10, symbol=sym),
                                        error_y=dict(type="data", array=df_["disparate_impact_std"], thickness=1),
                                        customdata=[br(v) for v in df_["disparate_impact_std"]],
-                                       hovertemplate="<b>" + name + "</b><br>intensidade %{x}<br>DI médio: %{y:.3f}"
+                                       hovertemplate="<b>" + name + "</b><br>intensidade %{x}%<br>DI médio: %{y:.3f}"
                                                      "<br>desvio-padrão: %{customdata}<extra></extra>"))
         fig_i.add_hline(y=DI_THRESHOLD, line_dash="dot", line_color=INK, line_width=1.5)
         add_legend_line(fig_i, "Limiar 0,8", dash="dot")
         fig_i.update_layout(title=f"DI do grupo {target}: a ferramenta percebe o viés", yaxis_title="Impacto Disparate",
-                            xaxis_title="Intensidade da injeção", yaxis_range=[0, 0.9])
+                            xaxis_title="Intensidade da injeção", yaxis_range=[0, 0.9], xaxis=x_axis)
         c_di.plotly_chart(style_fig(fig_i, height=400), width="stretch")
         fig_a = go.Figure(go.Scatter(x=xs, y=injc["roc_auc_mean"], mode="lines+markers", name="AUC-ROC",
                                      line=dict(color=BLUE, width=2.5), marker=dict(size=10),
-                                     hovertemplate="intensidade %{x}<br>AUC-ROC: %{y:.3f}<extra></extra>"))
+                                     hovertemplate="intensidade %{x}%<br>AUC-ROC: %{y:.3f}<extra></extra>"))
         fig_a.update_layout(title="AUC-ROC: a métrica convencional mal se move", yaxis_title="AUC-ROC",
-                            xaxis_title="Intensidade da injeção", yaxis_range=[0.5, 0.8])
+                            xaxis_title="Intensidade da injeção", yaxis_range=[0.5, 0.8], xaxis=x_axis)
         c_auc.plotly_chart(style_fig(fig_a, height=400), width="stretch")
         st.info(f"Com 50% de injeção, o DI do grupo {target} cai de {br(at0['disparate_impact_mean'])} para "
                 f"{br(at50['disparate_impact_mean'])}, enquanto a AUC-ROC varia {br(at50['roc_auc_mean'] - at0['roc_auc_mean'])}. "

@@ -27,7 +27,7 @@ RF08 & Exibir a evolução do DI entre as edições e permitir o download das m�
 RNF01 & Tempo de resposta da interface inferior a 2~s por interação (meta interna de projeto: 1,5~s). \\ \hline
 RNF02 & Pipeline em lote executável com até 8~GB de memória RAM. \\ \hline
 RNF03 & Reprodutibilidade integral: toda etapa estocástica usa semente fixa (42). \\ \hline
-RNF04 & Execução da interface em CPU Basic do Hugging Face Spaces (2 vCPUs, 16~GB). \\ \hline
+RNF04 & Execução da interface em infraestrutura gratuita de nuvem, com acesso público. \\ \hline
 RNF05 & Portabilidade por contêiner Docker. \\ \hline
 RNF06 & Acessibilidade: nenhum estado comunicado apenas por cor; termos técnicos acompanhados de explicação. \\ \hline
 \end{tabular}
@@ -38,7 +38,7 @@ RNF06 & Acessibilidade: nenhum estado comunicado apenas por cor; termos técnico
 \section{Arquitetura Desacoplada}
 \label{sec:arq_visao}
 
-O principal obstáculo de projeto é o custo computacional. Treinar modelos com validação cruzada, calcular valores SHAP para milhares de instâncias e executar 240 retreinamentos no experimento de injeção são tarefas incompatíveis com uma interface que deve responder em menos de dois segundos em um servidor de 2 vCPUs. A solução adotada é uma \textbf{arquitetura desacoplada em duas camadas}, ilustrada na Figura~\ref{fig:arquitetura}:
+O principal obstáculo de projeto é o custo computacional. Treinar modelos com validação cruzada, calcular valores SHAP para milhares de instâncias e executar 240 retreinamentos no experimento de injeção são tarefas incompatíveis com uma interface que deve responder em menos de dois segundos em um servidor gratuito de nuvem, com poucos núcleos de processamento. A solução adotada é uma \textbf{arquitetura desacoplada em duas camadas}, ilustrada na Figura~\ref{fig:arquitetura}:
 \begin{itemize}
     \item a \textbf{camada offline} executa todo o processamento pesado, em lote e fora do ambiente de produção, e materializa os resultados como arquivos Parquet estáticos;
     \item a \textbf{camada online} apenas lê e apresenta esses arquivos. Nenhum modelo é treinado e nenhum valor SHAP é calculado em tempo de requisição.
@@ -68,7 +68,7 @@ O contrato entre as camadas resume-se ao conjunto de arquivos em \texttt{data/ou
 % Camada online
 \node[ui, below=10mm of out] (app) {\texttt{app.py}\\Streamlit (cache)};
 \node[ui, right=of app] (user) {Usuário\\(navegador)};
-\node[draw, dashed, rounded corners, fit=(app)(user), inner sep=3mm, label={[font=\footnotesize\bfseries]below:Contêiner Docker --- Hugging Face Spaces}] (dock) {};
+\node[draw, dashed, rounded corners, fit=(app)(user), inner sep=3mm, label={[font=\footnotesize\bfseries]below:Streamlit Community Cloud ou contêiner Docker}] (dock) {};
 % Fluxos
 \draw[arr] (raw) -- (etl);
 \draw[arr] (etl) -- (pre);
@@ -154,14 +154,14 @@ As decisões de engenharia voltadas ao desempenho atuam em três níveis.
 
 \textbf{Apresentação.} A interface aplica dois níveis de cache do Streamlit \cite{streamlit2026}. O primeiro guarda os Parquets de cada edição, lidos uma única vez, e estruturas derivadas leves, como o índice de candidatos por grupo. O segundo guarda o \textit{summary plot} SHAP, que posiciona 10.000 pontos para cada um dos 46 atributos e é a operação mais cara da página: ele é renderizado uma única vez por edição e reutilizado como imagem. A medição de desempenho orientou duas decisões. Primeiro, sem esse cache, o gráfico era redesenhado a cada interação e mantinha o tempo de resposta próximo do limite de 2~s. Segundo, mesmo cacheado, ele dominava o tempo da primeira carga. Por isso, na versão final, o \textit{summary plot} é exibido \textbf{sob demanda}, e a visão padrão de importância global usa um gráfico de barras leve, construído a partir de um resumo pré-calculado.
 
-O requisito RNF01 foi avaliado localmente pelo módulo \texttt{06\_benchmark\_app.py}. O módulo executa a interface completa em modo \textit{headless} para cada combinação de edição e atributo: uma primeira carga com o cache vazio e cinco interações subsequentes. Como a máquina de desenvolvimento dispõe de 12 núcleos lógicos, e o ambiente-alvo, de 2 vCPUs, a medição foi repetida com a afinidade do processo restrita a 2 núcleos e as bibliotecas numéricas limitadas a duas \textit{threads}. Os resultados constam da Tabela~\ref{tab:app_benchmark}:
+O requisito RNF01 foi avaliado localmente pelo módulo \texttt{06\_benchmark\_app.py}. O módulo executa a interface completa em modo \textit{headless} para cada combinação de edição e atributo: uma primeira carga com o cache vazio e cinco interações subsequentes. Como a máquina de desenvolvimento dispõe de 12 núcleos lógicos, e ambientes gratuitos de nuvem costumam oferecer poucos núcleos, a medição foi repetida com a afinidade do processo restrita a 2 núcleos e as bibliotecas numéricas limitadas a duas \textit{threads}. Os resultados constam da Tabela~\ref{tab:app_benchmark}:
 \begin{itemize}
-    \item sem restrição, a primeira carga de cada edição leva entre 0,18~s e 0,26~s;
-    \item com 2 núcleos, a primeira carga leva entre 0,16~s e 0,23~s;
-    \item nas duas configurações, as interações subsequentes levam em média entre 0,12~s e 0,18~s, com máximo de 0,320~s;
+    \item sem restrição, a primeira carga de cada edição leva entre 0,17~s e 0,35~s;
+    \item com 2 núcleos, a primeira carga leva entre 0,19~s e 0,33~s;
+    \item nas duas configurações, as interações subsequentes levam em média entre 0,12~s e 0,19~s, com máximo de 0,280~s;
     \item todas as 72 execuções ficaram abaixo de 2~s e também da meta interna de 1,5~s.
 \end{itemize}
-A restrição de núcleos não aumentou o tempo de resposta, o que é coerente com uma carga dominada por operações sequenciais de leitura e renderização. A medição cobre a página na configuração padrão. A primeira renderização do \textit{summary plot}, acionada sob demanda pelo usuário, não está incluída nela e ocorre uma única vez por edição. Ressalva-se que essa é uma \textbf{aproximação} do ambiente-alvo, executada na mesma CPU física e sem a virtualização e a contenção de recursos de uma plataforma compartilhada. A confirmação definitiva do requisito exige medição no próprio Hugging Face Spaces após a implantação.
+A restrição de núcleos não alterou de forma relevante o tempo de resposta, o que é coerente com uma carga dominada por operações sequenciais de leitura e renderização. A medição cobre a página na configuração padrão. A primeira renderização do \textit{summary plot}, acionada sob demanda pelo usuário, não está incluída nela e ocorre uma única vez por edição. Ressalva-se que essa é uma \textbf{aproximação} de um ambiente de nuvem com poucos núcleos, executada na mesma CPU física e sem a virtualização e a contenção de recursos de uma plataforma compartilhada. A plataforma de implantação pública (Seção~\ref{sec:docker}) não divulga a capacidade de processamento alocada a cada aplicação. Por isso, o tempo de resposta em produção não foi medido com o mesmo protocolo e permanece como limitação.
 
 \input{tabelas/tab_app_benchmark}
 
@@ -188,7 +188,7 @@ A interface organiza-se em uma barra lateral, uma faixa de indicadores e três a
     \item a AUC-ROC do modelo.
 \end{itemize}
 
-\textbf{Aba ``Visão Geral de Equidade''.} O gráfico principal apresenta o DI de cada subgrupo em barras horizontais, com o intervalo de confiança de 95\% na extremidade de cada barra e o limiar de 0,8 identificado em legenda (RF03). Um texto lateral interpreta o resultado, indica quantos alertas se mantêm em ao menos 95\% das reamostragens \textit{bootstrap} e destaca os grupos de baixa precisão. Um segundo gráfico confronta, para cada grupo, o DI calculado sobre as notas reais e o DI das previsões, sinalizando os casos em que o alerta é \textbf{criado} pelo modelo (RF04). Completam a aba:
+\textbf{Aba ``Visão Geral de Equidade''} (Figura~\ref{fig:dash_equidade}). O gráfico principal apresenta o DI de cada subgrupo em barras horizontais, com o intervalo de confiança de 95\% na extremidade de cada barra e o limiar de 0,8 identificado em legenda (RF03). Um texto lateral interpreta o resultado, indica quantos alertas se mantêm em ao menos 95\% das reamostragens \textit{bootstrap} e destaca os grupos de baixa precisão. Um segundo gráfico confronta, para cada grupo, o DI calculado sobre as notas reais e o DI das previsões, sinalizando os casos em que o alerta é \textbf{criado} pelo modelo (RF04). Completam a aba:
 \begin{itemize}
     \item uma tabela detalhada com taxa de seleção, DI e TPR com intervalos de confiança, e FPR;
     \item o download das métricas em CSV;
@@ -196,23 +196,56 @@ A interface organiza-se em uma barra lateral, uma faixa de indicadores e três a
     \item a evolução do DI de cada grupo entre 2019 e 2021 (RF08).
 \end{itemize}
 
+\begin{figure}[htbp]
+\centering
+\caption{Dashboard: aba ``Visão Geral de Equidade'' (ENEM 2020, raça/cor)}
+\label{fig:dash_equidade}
+\includegraphics[width=\textwidth]{figuras/dashboard_equidade.png}
+\fonte{Elaborado pelo autor (captura da interface).}
+\end{figure}
+
 \textbf{Aba ``Explicabilidade (SHAP)''.} Divide-se em duas visões:
 \begin{itemize}
-    \item \textbf{global (RF05):} um gráfico de barras com os doze atributos de maior importância média, em linguagem natural, e um destaque para a exclusão digital, com a diferença condicional SHAP e a prevalência de candidatos sem computador em cada edição. O \textit{summary plot}, no qual cada ponto é um candidato, é exibido sob demanda;
-    \item \textbf{local (RF06):} permite filtrar candidatos por raça/cor e escolher um deles. A tela mostra seu perfil socioeconômico legível, a chance estimada de ficar acima da mediana e um \textit{waterfall plot} com as oito maiores contribuições SHAP, as demais agregadas, partindo do valor médio do modelo até a previsão final.
+    \item \textbf{global (RF05, Figura~\ref{fig:dash_shap}):} um gráfico de barras com os doze atributos de maior importância média, em linguagem natural, e um destaque para a exclusão digital, com a diferença condicional SHAP e a prevalência de candidatos sem computador em cada edição. O \textit{summary plot}, no qual cada ponto é um candidato, é exibido sob demanda;
+    \item \textbf{local (RF06, Figura~\ref{fig:dash_local}):} permite filtrar candidatos por raça/cor e escolher um deles. A tela mostra seu perfil socioeconômico legível, a chance estimada de ficar acima da mediana e um \textit{waterfall plot} com as oito maiores contribuições SHAP, as demais agregadas, partindo do valor médio do modelo até a previsão final.
 \end{itemize}
 Esse recurso pode subsidiar, sem substituir, as informações sobre critérios e procedimentos da decisão automatizada a que o titular tem direito pelo Art.~20 da LGPD \cite{brasil2018lgpd}. Uma decomposição técnica da predição não equivale, por si só, a uma explicação clara e adequada ao destinatário leigo.
 
-\textbf{Aba ``Injeção Sintética de Viés'' (RF07).} Torna visível ao usuário a validação descrita na Seção~\ref{sec:injecao}. Para o grupo-alvo escolhido (Pardo ou Indígena) e a edição selecionada, dois gráficos lado a lado mostram a queda do DI nos cenários de injeção e de controle e a variação, muito menor, da AUC-ROC. Três indicadores sintetizam o efeito com 50\% de intensidade. A aba materializa para o usuário o argumento central do trabalho: um modelo validado apenas por métricas agregadas poderia ser aprovado mesmo excluindo sistematicamente um grupo.
+\begin{figure}[htbp]
+\centering
+\caption{Dashboard: importância global dos atributos e destaque da exclusão digital}
+\label{fig:dash_shap}
+\includegraphics[width=\textwidth]{figuras/dashboard_shap.png}
+\fonte{Elaborado pelo autor (captura da interface).}
+\end{figure}
 
-% Sugestão ao autor: inserir aqui capturas de tela do painel (Figura: Painel de equidade; Figura: Painel SHAP),
-% salvas em figuras/dashboard_*.png, com \fonte{Elaborado pelo autor.}
+\begin{figure}[htbp]
+\centering
+\caption{Dashboard: explicação local de um candidato (perfil, chance estimada e decomposição SHAP)}
+\label{fig:dash_local}
+\includegraphics[width=\textwidth]{figuras/dashboard_local.png}
+\fonte{Elaborado pelo autor (captura da interface).}
+\end{figure}
+
+\textbf{Aba ``Injeção Sintética de Viés'' (RF07, Figura~\ref{fig:dash_injecao}).} Torna visível ao usuário a validação descrita na Seção~\ref{sec:injecao}. Para o grupo-alvo escolhido (Pardo ou Indígena) e a edição selecionada, dois gráficos lado a lado mostram a queda do DI nos cenários de injeção e de controle e a variação, muito menor, da AUC-ROC. Três indicadores sintetizam o efeito com 50\% de intensidade. A aba materializa para o usuário o argumento central do trabalho: um modelo validado apenas por métricas agregadas poderia ser aprovado mesmo excluindo sistematicamente um grupo.
+
+\begin{figure}[htbp]
+\centering
+\caption{Dashboard: aba ``Injeção Sintética de Viés'' (grupo-alvo Pardo, ENEM 2020)}
+\label{fig:dash_injecao}
+\includegraphics[width=\textwidth]{figuras/dashboard_injecao.png}
+\fonte{Elaborado pelo autor (captura da interface).}
+\end{figure}
 
 % ---------------------------------------------------------------------------
 \section{Empacotamento e Implantação}
 \label{sec:docker}
 
-A camada online é distribuída como uma imagem Docker \cite{merkel2014docker}, construída em dois estágios (\textit{multi-stage build}), conforme o Quadro~\ref{qua:docker}. O estágio \textit{builder} instala as dependências em um ambiente virtual isolado. O estágio \textit{runner} parte de uma imagem base limpa e recebe apenas esse ambiente, a interface e os Parquets, de modo que ferramentas de instalação e caches não chegam à imagem final.
+A camada online é distribuída de duas formas complementares: uma \textbf{implantação pública} em plataforma gratuita de nuvem, que dá acesso imediato à ferramenta, e uma \textbf{imagem Docker} \cite{merkel2014docker}, que garante a portabilidade para qualquer infraestrutura baseada em contêineres.
+
+\subsection{Imagem Docker}
+
+A imagem é construída em dois estágios (\textit{multi-stage build}), conforme o Quadro~\ref{qua:docker}. O estágio \textit{builder} instala as dependências em um ambiente virtual isolado. O estágio \textit{runner} parte de uma imagem base limpa e recebe apenas esse ambiente, a interface e os Parquets, de modo que ferramentas de instalação e caches não chegam à imagem final.
 
 \begin{quadro}[htbp]
 \centering
@@ -223,15 +256,26 @@ A camada online é distribuída como uma imagem Docker \cite{merkel2014docker}, 
 \textbf{Elemento} & \textbf{Decisão} \\ \hline
 Imagem base & \texttt{python:3.12-slim}, nos dois estágios. \\ \hline
 Estágio \textit{builder} & Cria \texttt{/opt/venv} e instala \texttt{requirements.txt}, que contém somente as dependências da interface, com versões fixadas idênticas às validadas localmente. \\ \hline
-Estágio \textit{runner} & Copia \texttt{/opt/venv}, \texttt{app.py} e \texttt{data/outputs/}; executa como usuário não privilegiado (UID 1000), exigência do Hugging Face Spaces. \\ \hline
-Configuração & Porta 7860; servidor Streamlit \textit{headless}; limite de duas \textit{threads} numéricas, compatível com 2 vCPUs; diretórios de cache graváveis para as bibliotecas de visualização. \\ \hline
+Estágio \textit{runner} & Copia \texttt{/opt/venv}, \texttt{app.py} e \texttt{data/outputs/}; executa como usuário não privilegiado (UID 1000), boa prática de segurança exigida por diversas plataformas de contêiner. \\ \hline
+Configuração & Porta 7860; servidor Streamlit \textit{headless}; limite de duas \textit{threads} numéricas, compatível com ambientes de poucos núcleos; diretórios de cache graváveis para as bibliotecas de visualização. \\ \hline
 Contexto de \textit{build} & Arquivo \texttt{.dockerignore} em modo de lista de permissão, que exclui os microdados brutos (aproximadamente 5,7~GB), modelos e o texto da monografia. \\ \hline
 Monitoramento & Verificação de saúde (\textit{health check}) periódica no \textit{endpoint} nativo do Streamlit. \\ \hline
 \end{tabular}
 \fonte{Elaborado pelo autor.}
 \end{quadro}
 
-O ambiente-alvo é o Hugging Face Spaces com SDK Docker, na configuração gratuita CPU Basic (2 vCPUs e 16~GB de memória). Como a imagem contém apenas a camada online, o pipeline em lote é executado localmente e seus resultados são versionados com o repositório. Para atualizar a ferramenta com novas edições do ENEM, basta reexecutar o pipeline e reconstruir a imagem.
+A imagem é validada automaticamente por integração contínua (GitHub Actions) a cada alteração da interface, das dependências ou dos artefatos. O \textit{workflow} constrói a imagem, executa o contêiner com o processamento limitado a 2 CPUs, aguarda a resposta do \textit{health check} e, por fim, executa a interface completa em modo \textit{headless} dentro do próprio contêiner, para as três edições e os dois atributos protegidos, falhando se qualquer exceção ocorrer. Dessa forma, a portabilidade não é apenas declarada, mas verificada a cada mudança.
+
+\subsection{Implantação Pública}
+
+O planejamento inicial previa hospedar a imagem no Hugging Face Spaces. Durante o desenvolvimento, porém, a plataforma passou a exigir plano pago para novos \textit{Spaces} baseados em Docker, o que contrariaria a premissa de custo nulo. A interface foi então implantada no \textbf{Streamlit Community Cloud} \cite{streamlit2026}, serviço gratuito que executa aplicações Streamlit diretamente a partir de um repositório público, e está disponível em:
+\begin{center}
+\url{https://auditeduxai.streamlit.app/}
+\end{center}
+
+A plataforma instala apenas as dependências da interface, declaradas com versões fixadas no arquivo \texttt{requirements.txt} da raiz do repositório e executadas em Python~3.12. Em seguida, lê os arquivos Parquet versionados em \texttt{data/outputs/}. A arquitetura desacoplada é o que torna essa hospedagem viável: como nenhum modelo é treinado e nenhum valor SHAP é calculado em tempo de requisição, a aplicação permanece dentro dos limites de memória e processamento de um serviço gratuito. Como limitação operacional, aplicações sem acesso por 12 horas são hibernadas pela plataforma, e o primeiro acesso subsequente demanda alguns segundos para reativá-las.
+
+Em ambos os casos, o pipeline em lote é executado localmente e seus resultados são versionados com o repositório. Para atualizar a ferramenta com novas edições do ENEM, basta reexecutar o pipeline e publicar os novos arquivos Parquet; a plataforma reimplanta a aplicação automaticamente, e a integração contínua revalida a imagem Docker.
 
 % ---------------------------------------------------------------------------
 \section{Reprodutibilidade}

@@ -21,7 +21,7 @@ O objetivo geral foi atingido: a ferramenta detecta, quantifica e explica vieses
 
 As contribuições do trabalho situam-se em três dimensões.
 
-\textbf{Contribuição tecnológica.} Um artefato de código aberto que combina, em um mesmo fluxo, métricas de equidade de grupo, decomposição do viés entre dados e modelo, explicações TreeSHAP e uma interface acessível a usuários sem formação em programação. Sua arquitetura desacoplada, com pré-cálculo em lote e leitura de arquivos estáticos, indica que a auditoria algorítmica pode ser oferecida em infraestrutura de baixo custo. O padrão é replicável para outras bases públicas.
+\textbf{Contribuição tecnológica.} Um artefato de código aberto que combina, em um mesmo fluxo, métricas de equidade de grupo, decomposição do viés entre dados e modelo, explicações TreeSHAP e uma interface acessível a usuários sem formação em programação. Sua arquitetura desacoplada, com pré-cálculo em lote e leitura de arquivos estáticos, demonstra, com a implantação pública em plataforma gratuita (\url{https://auditeduxai.streamlit.app/}), que a auditoria algorítmica pode ser oferecida sem custo de infraestrutura. Além disso, a imagem Docker validada por integração contínua assegura a portabilidade para outros ambientes. O padrão é replicável para outras bases públicas.
 
 \textbf{Contribuição empírica.} A aplicação aos dados de 2019 a 2021 produziu três achados substantivos:
 \begin{itemize}
@@ -56,7 +56,7 @@ Os resultados abrem as seguintes linhas de continuidade:
     \item \textbf{Mitigação:} integrar técnicas de pré-processamento, como a reponderação de instâncias \cite{kamiran2012data}, e de pós-processamento, como limiares por grupo \cite{hardt2016equality}, e exibir o \textit{trade-off} entre desempenho e equidade na própria interface;
     \item \textbf{Interseccionalidade:} avaliar subgrupos definidos pela combinação de atributos, como raça/cor e renda, nos quais disparidades podem ser maiores que as observadas em cada atributo isolado \cite{buolamwini2018gender};
     \item \textbf{Generalização:} estender a auditoria a outras famílias de modelos, a novas edições do ENEM e a outras bases educacionais públicas, como o SAEB e o Censo Escolar;
-    \item \textbf{Interface:} realizar a implantação pública contínua da imagem Docker e avaliar a usabilidade do painel com usuários do público-alvo, como gestores e membros de órgãos de controle, por meio de testes de usabilidade.
+    \item \textbf{Interface:} avaliar a usabilidade do painel com usuários do público-alvo, como gestores e membros de órgãos de controle, por meio de testes de usabilidade.
 \end{itemize}
 
 % ---------------------------------------------------------------------------
