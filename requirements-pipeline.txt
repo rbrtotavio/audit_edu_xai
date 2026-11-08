@@ -1,0 +1,7 @@
+# Dependências do PIPELINE OFFLINE (src/01..08) e do gerador de tabelas da monografia.
+# Inclui as dependências da camada online. Instalação completa do ambiente de desenvolvimento:
+#   pip install -r requirements-pipeline.txt
+-r requirements.txt
+scikit-learn==1.9.1
+xgboost==3.4.1
+joblib==1.6.0

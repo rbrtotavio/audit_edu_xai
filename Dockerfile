@@ -23,9 +23,9 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 
 # Copiado isoladamente para aproveitar o cache de camadas do Docker
-COPY requirements-app.txt /tmp/requirements-app.txt
+COPY requirements.txt /tmp/requirements.txt
 RUN pip install --upgrade pip \
- && pip install -r /tmp/requirements-app.txt
+ && pip install -r /tmp/requirements.txt
 
 # -----------------------------------------------------------------------------
 # Estágio 2 — runner: imagem final enxuta, sem pip cache nem artefatos de build

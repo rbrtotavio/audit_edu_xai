@@ -53,9 +53,16 @@ audit_edu_xai/
 │   ├── 01_etl.py            # Extração em chunks e filtro de absenteísmo
 │   ├── 02_preprocessing.py  # Amostragem estratificada, imputação por moda e NMG
 │   ├── 03_trainer.py        # Treinamento XGBoost com GridSearchCV 5-fold
-│   └── 04_audit_engine.py   # Motor nativo C++ SHAP e métricas de Fairness
-├── app.py                   # Interface Streamlit (consumo estático < 2s)
-├── requirements.txt         # Pacotes e versões do projeto
+│   ├── 04_audit_engine.py   # Auditoria no TESTE: DI, TPR/FPR, IC bootstrap, TreeSHAP
+│   ├── 05_bias_injection.py # Validação por injeção sintética de viés
+│   ├── 06_benchmark_app.py  # Tempo de resposta do dashboard (--cpus 2)
+│   ├── 07_data_quality.py   # Ausentes e robustez da imputação
+│   └── 08_build_manifest.py # Manifesto SHA-256 dos artefatos
+├── app.py                   # Dashboard Streamlit (só lê data/outputs/*.parquet)
+├── requirements.txt         # Dependências do dashboard (versões fixadas) — Streamlit Cloud e Docker
+├── requirements-pipeline.txt # Dependências do pipeline offline (inclui requirements.txt)
+├── Dockerfile / .dockerignore # Imagem multi-stage da camada online
+├── .github/workflows/docker.yml # CI: build + teste de fumaça da imagem
 └── README.md                # Documentação técnica mestre
 ```
 
@@ -110,8 +117,11 @@ source venv/bin/activate
 # Windows (PowerShell)
 .\venv\Scripts\activate
 
-# Instalar dependências
+# Instalar dependências (pipeline completo + dashboard)
 pip install --upgrade pip
+pip install -r requirements-pipeline.txt
+
+# Apenas o dashboard
 pip install -r requirements.txt
 ```
 
@@ -142,34 +152,34 @@ Acesse `http://localhost:8501` no navegador. O dashboard realiza apenas leituras
 
 ---
 
-## 🐳 6. Empacotamento Docker & Deploy (Hugging Face Spaces)
+## 🚀 6. Implantação
 
-### 6.1 Compilação e Teste Local da Imagem Docker
+### 6.1 Streamlit Community Cloud (hospedagem pública gratuita)
+
+O dashboard é hospedado diretamente a partir deste repositório no GitHub, sem Docker:
+
+1. Acesse https://share.streamlit.io e entre com a conta do GitHub.
+2. **Create app** → *Deploy a public app from GitHub* → repositório `rbrtotavio/audit_edu_xai`, branch de trabalho, arquivo principal `app.py`.
+3. Em **Advanced settings**, selecione **Python 3.12** (o `numpy==1.26.4` fixado não tem *wheels* para versões mais novas).
+4. **Deploy.** O Cloud instala `requirements.txt` (apenas as dependências do dashboard) e lê os Parquets versionados em `data/outputs/`.
+
+> O app hiberna após 12 h sem acesso; o primeiro acesso seguinte leva alguns segundos para acordá-lo. Abra a URL antes de uma apresentação.
+> Pico de memória medido localmente: ~380 MB (todas as edições, atributos e beeswarms).
+
+### 6.2 Imagem Docker (portabilidade)
+
+O `Dockerfile` é **multi-stage** (`builder` instala `requirements.txt` num venv; `runner` copia só o venv, `app.py` e `data/outputs/`), roda como usuário não-root UID 1000 e expõe a porta `7860`. O `.dockerignore` é uma lista de permissão: `data/raw/`, `venv/`, `models/` e `article/` não entram no contexto de build.
 
 ```bash
-# Criar a imagem Docker
 docker build -t audit-edu-xai .
-
-# Rodar o container localmente
-docker run -p 7860:7860 audit-edu-xai
+docker run --cpus=2 -p 7860:7860 audit-edu-xai   # http://localhost:7860
 ```
 
-### 6.2 Deploy no Hugging Face Spaces
-O `Dockerfile` é **multi-stage** (`builder` instala as dependências de `requirements-app.txt` num venv; `runner` copia só o venv, `app.py` e `data/outputs/`), roda como usuário não-root UID 1000 e expõe a porta `7860`. O `.dockerignore` é uma lista de permissão: `data/raw/`, `venv/`, `models/` e `article/` não entram no contexto de build.
+A cada mudança em `Dockerfile`, `requirements.txt`, `app.py` ou `data/outputs/`, o workflow `.github/workflows/docker.yml` constrói a imagem, sobe o contêiner com 2 CPUs, verifica o *health check* e executa o app (AppTest) dentro dele.
 
-1. Crie um **Space** do tipo **Docker** (Blank) no Hugging Face (hardware: CPU Basic — 2 vCPUs, 16 GB).
-2. Envie ao repositório do Space: `Dockerfile`, `.dockerignore`, `requirements-app.txt`, `app.py` e `data/outputs/`.
-3. O `README.md` **do Space** deve começar com o cabeçalho YAML:
+> A mesma imagem pode ser publicada em plataformas baseadas em contêiner (ex.: Hugging Face Spaces com SDK Docker, que exige plano pago para novas contas).
 
-```yaml
----
-title: AuditEdu-XAI
-sdk: docker
-app_port: 7860
----
-```
-
-> O pipeline offline (`src/01`–`05`) **não** roda no contêiner: execute-o localmente e envie os Parquets resultantes.
+> O pipeline offline (`src/01`–`08`) **não** roda no contêiner nem no Cloud: execute-o localmente e versione os Parquets resultantes.
 
 ---
 

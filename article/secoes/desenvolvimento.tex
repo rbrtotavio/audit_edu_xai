@@ -222,7 +222,7 @@ A camada online é distribuída como uma imagem Docker \cite{merkel2014docker}, 
 \hline
 \textbf{Elemento} & \textbf{Decisão} \\ \hline
 Imagem base & \texttt{python:3.12-slim}, nos dois estágios. \\ \hline
-Estágio \textit{builder} & Cria \texttt{/opt/venv} e instala \texttt{requirements-app.txt}, que contém somente as dependências da interface, com versões fixadas idênticas às validadas localmente. \\ \hline
+Estágio \textit{builder} & Cria \texttt{/opt/venv} e instala \texttt{requirements.txt}, que contém somente as dependências da interface, com versões fixadas idênticas às validadas localmente. \\ \hline
 Estágio \textit{runner} & Copia \texttt{/opt/venv}, \texttt{app.py} e \texttt{data/outputs/}; executa como usuário não privilegiado (UID 1000), exigência do Hugging Face Spaces. \\ \hline
 Configuração & Porta 7860; servidor Streamlit \textit{headless}; limite de duas \textit{threads} numéricas, compatível com 2 vCPUs; diretórios de cache graváveis para as bibliotecas de visualização. \\ \hline
 Contexto de \textit{build} & Arquivo \texttt{.dockerignore} em modo de lista de permissão, que exclui os microdados brutos (aproximadamente 5,7~GB), modelos e o texto da monografia. \\ \hline

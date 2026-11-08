@@ -1,0 +1,71 @@
+# Valida a imagem Docker da camada online a cada mudança relevante.
+# Não publica a imagem: constrói, sobe o contêiner, testa o health check e executa o app
+# em modo headless (AppTest) DENTRO do contêiner, nas 3 edições × 2 atributos.
+name: docker-build-and-smoke-test
+
+on:
+  push:
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "requirements.txt"
+      - "app.py"
+      - "data/outputs/**"
+      - ".github/workflows/docker.yml"
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "requirements.txt"
+      - "app.py"
+      - "data/outputs/**"
+  workflow_dispatch:
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build da imagem (multi-stage)
+        run: docker build -t audit-edu-xai:ci .
+
+      - name: Tamanho da imagem
+        run: docker image inspect audit-edu-xai:ci --format 'Tamanho: {{.Size}} bytes'
+
+      - name: Sobe o contêiner com o orçamento do alvo (2 CPUs, 16 GB)
+        run: docker run -d --name app --cpus=2 --memory=16g -p 7860:7860 audit-edu-xai:ci
+
+      - name: Health check do Streamlit
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:7860/_stcore/health; then echo; echo "saudável após ${i}x2 s"; exit 0; fi
+            sleep 2
+          done
+          docker logs app
+          exit 1
+
+      - name: Executa o app (AppTest) dentro do contêiner — 3 edições × 2 atributos
+        run: |
+          docker exec app python -c "
+          from streamlit.testing.v1 import AppTest
+          falhas = 0
+          for ano in (2019, 2020, 2021):
+              for attr in ('TP_COR_RACA', 'Q006'):
+                  at = AppTest.from_file('/home/user/app/app.py', default_timeout=180).run()
+                  at.sidebar.selectbox[0].set_value(ano)
+                  at.sidebar.selectbox[1].set_value(attr)
+                  at.run()
+                  print(ano, attr, 'exceções:', len(at.exception))
+                  falhas += len(at.exception)
+          raise SystemExit(falhas)
+          "
+
+      - name: Memória do contêiner após o teste
+        if: always()
+        run: docker stats --no-stream app
+
+      - name: Logs do contêiner (em caso de falha)
+        if: failure()
+        run: docker logs app
