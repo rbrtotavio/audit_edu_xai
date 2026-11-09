@@ -17,7 +17,7 @@ No Brasil, os microdados do ENEM constituem uma das bases mais utilizadas para e
 
 Modelos de alto desempenho, como \textit{ensembles} de árvores e redes neurais, combinam centenas ou milhares de componentes cujas interações não são diretamente inteligíveis para seres humanos. Essa característica é conhecida como problema da \textit{caixa-preta} \cite{adadi2018peeking}. A opacidade dificulta a responsabilização, impede a contestação de decisões e oculta padrões discriminatórios. \citeonline{rudin2019stop} argumenta que, em decisões de alto impacto, modelos intrinsecamente interpretáveis deveriam ser preferidos. Quando modelos complexos são empregados, técnicas de explicação \textit{post-hoc} tornam-se condição mínima de transparência \cite{arrieta2020explainable}.
 
-A questão ganha contornos jurídicos no Brasil. O Art.~20 da Lei Geral de Proteção de Dados assegura ao titular o direito de solicitar a revisão de decisões tomadas unicamente com base em tratamento automatizado e de obter informações sobre os critérios utilizados \cite{brasil2018lgpd}. O Projeto de Lei nº 2.338/2023 tende a classificar sistemas de IA aplicados a processos seletivos educacionais como de alto risco \cite{brasil2023pl2338}.
+A questão ganha contornos jurídicos no Brasil, onde a LGPD e o Projeto de Lei nº 2.338/2023 tratam da revisão de decisões automatizadas e da classificação de sistemas de IA por nível de risco \cite{brasil2018lgpd, brasil2023pl2338}. Esse panorama regulatório é discutido na Seção~\ref{sec:panorama_regulatorio}.
 
 % ---------------------------------------------------------------------------
 \section{\textit{Gradient Boosting} e o Algoritmo XGBoost}
@@ -66,14 +66,14 @@ Sua forma de razão é o \textbf{Impacto Disparate} (DI), que compara a taxa de 
 \mathrm{DI} = \frac{P(\hat{Y} = 1 \mid G = a)}{P(\hat{Y} = 1 \mid G = b)}.
 \label{eq:rt_di}
 \end{equation}
-A métrica tem origem no direito antidiscriminatório norte-americano. As diretrizes da \textit{Equal Employment Opportunity Commission} estabelecem a \textbf{regra dos quatro quintos}: uma taxa de seleção inferior a 80\% da taxa do grupo mais favorecido constitui evidência de impacto adverso \cite{eeoc1978uniform}. \citeonline{feldman2015certifying} formalizaram essa regra no contexto do aprendizado de máquina, definindo como discriminatório um classificador com $\mathrm{DI} < \tau$, com $\tau = 0{,}8$.
+A métrica tem origem no direito antidiscriminatório norte-americano. As diretrizes da \textit{Equal Employment Opportunity Commission} (EEOC) estabelecem a \textbf{regra dos quatro quintos}: uma taxa de seleção inferior a 80\% da taxa do grupo mais favorecido constitui evidência de impacto adverso \cite{eeoc1978uniform}. \citeonline{feldman2015certifying} formalizaram essa regra no contexto do aprendizado de máquina, definindo como discriminatório um classificador com $\mathrm{DI} < \tau$, com $\tau = 0{,}8$. Neste trabalho, o limiar é adotado como indicador de triagem (Seção~\ref{sec:metricas_equidade}).
 
 A Paridade Demográfica ignora os rótulos reais. Se as taxas-base diferem entre os grupos, mesmo um classificador perfeito a violaria. Para considerar a correção das predições, \citeonline{hardt2016equality} propuseram a \textbf{Igualdade de Oportunidades} (\textit{Equal Opportunity}), que exige taxas de verdadeiros positivos iguais:
 \begin{equation}
 P(\hat{Y} = 1 \mid Y = 1, G = a) = P(\hat{Y} = 1 \mid Y = 1, G = b),
 \label{eq:rt_eo}
 \end{equation}
-e sua versão mais forte, as \textbf{Chances Equalizadas} (\textit{Equalized Odds}), que exige também a igualdade das taxas de falsos positivos:
+e sua versão mais forte, o critério de \textbf{\textit{Equalized Odds}} (chances equalizadas), que exige também a igualdade das taxas de falsos positivos:
 \begin{equation}
 P(\hat{Y} = 1 \mid Y = y, G = a) = P(\hat{Y} = 1 \mid Y = y, G = b), \quad y \in \{0, 1\}.
 \label{eq:rt_eodds}

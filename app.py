@@ -335,27 +335,79 @@ with tab_eq:
     for _, r in amp.iterrows():
         fig_amp.add_trace(go.Scatter(x=[r["label_disparate_impact"], r["disparate_impact"]], y=[r["label"], r["label"]],
                                      mode="lines", line=dict(color=GRAY, width=2), showlegend=False, hoverinfo="skip"))
+    amp_ci_txt = [ci(a, b) for a, b in zip(amp["di_amplification_ci_low"], amp["di_amplification_ci_high"])]
     fig_amp.add_trace(go.Scatter(x=amp["label_disparate_impact"], y=amp["label"], mode="markers", name="Notas reais (dados)",
                                  marker=dict(size=11, color="white", line=dict(color=BLUE, width=2.5)),
-                                 hovertemplate="<b>%{y}</b><br>DI nas notas reais: %{x:.3f}<extra></extra>"))
+                                 customdata=list(zip([br(v) for v in amp["label_disparate_impact"]],
+                                                     [ci(a, b) for a, b in zip(amp["label_di_ci_low"], amp["label_di_ci_high"])])),
+                                 hovertemplate="<b>%{y}</b><br>DI nas notas reais: %{customdata[0]}<br>"
+                                               "IC 95%: %{customdata[1]}<extra></extra>"))
     fig_amp.add_trace(go.Scatter(x=amp["disparate_impact"], y=amp["label"], mode="markers", name="Previsões do modelo",
                                  marker=dict(size=11, color=BLUE, symbol="diamond"),
-                                 hovertemplate="<b>%{y}</b><br>DI do modelo: %{x:.3f}<extra></extra>"))
+                                 customdata=list(zip([br(v) for v in amp["disparate_impact"]],
+                                                     [ci(a, b) for a, b in zip(amp["di_ci_low"], amp["di_ci_high"])],
+                                                     [br(v) for v in amp["di_amplification"]], amp_ci_txt)),
+                                 hovertemplate="<b>%{y}</b><br>DI do modelo: %{customdata[0]}<br>"
+                                               "IC 95%: %{customdata[1]}<br>Amplificação Δ (modelo − dados): "
+                                               "%{customdata[2]}<br>IC 95% de Δ: %{customdata[3]}<extra></extra>"))
     fig_amp.add_vline(x=DI_THRESHOLD, line_dash="dash", line_color=INK, line_width=1.5)
     add_legend_line(fig_amp, "Limiar 0,8")
-    fig_amp.update_layout(xaxis_title="Impacto Disparate", xaxis_range=[0, 1.05], yaxis_autorange="reversed")
+    x_max = max(1.05, float(amp[["label_disparate_impact", "disparate_impact"]].max().max()) + 0.05)
+    fig_amp.update_layout(xaxis_title="Impacto Disparate", xaxis_range=[0, x_max], yaxis_autorange="reversed")
     c_amp, c_amp_txt = st.columns([3, 2])
     c_amp.plotly_chart(style_fig(fig_amp, height=max(300, 30 * len(amp) + 130)), width="stretch")
-    n_amp = int((amp["disparate_impact"] < amp["label_disparate_impact"]).sum())
+    # Amplificação COM DESVANTAGEM: só grupos que já estavam abaixo da referência nas notas reais (DI_y < 1).
+    # Com DI_y > 1, Δ < 0 é mecânico (DI_ŷ <= 1 por construção, pois a referência é o grupo de maior taxa
+    # prevista) e não indica desvantagem.
+    disadv = amp[amp["label_disparate_impact"] < 1]
+    above = amp[amp["label_disparate_impact"] > 1]
+    n_amp = int((disadv["disparate_impact"] < disadv["label_disparate_impact"]).sum())
+    n_amp_robust = int((disadv["di_amplification_ci_high"] < 0).sum())
+    above_neg = above[above["disparate_impact"] < above["label_disparate_impact"]]
     crossed = amp[(amp["label_disparate_impact"] >= DI_THRESHOLD) & (amp["disparate_impact"] < DI_THRESHOLD)]
     c_amp_txt.markdown(
-        f"Em **{n_amp} de {len(amp)}** grupos, o losango (modelo) fica à **esquerda** do círculo (dados): "
-        "o modelo concentra ainda mais as previsões positivas no grupo de referência."
+        f"Dos **{len(disadv)}** grupos que já ficavam abaixo da referência nas notas reais (DI < 1), em "
+        f"**{n_amp}** o losango (modelo) fica à **esquerda** do círculo (dados): o modelo aumenta a desvantagem, "
+        "concentrando ainda mais as previsões positivas no grupo de referência. "
+        f"Em **{n_amp_robust}** deles essa amplificação é **estatisticamente robusta** "
+        "(o IC 95% da diferença Δ = DI do modelo − DI dos dados fica inteiro abaixo de 0)."
     )
+    if len(above_neg):
+        c_amp_txt.caption(
+            f"ℹ️ {'Nas faixas' if selected_attr == 'Q006' else 'Nos grupos'} "
+            + ", ".join(above_neg["label"]) +
+            ", o DI nas notas reais passa de 1 (o grupo superava a referência). Como o DI do modelo não passa "
+            "de 1 por construção, o Δ negativo só reflete a aproximação ao grupo de referência e **não indica "
+            "desvantagem**."
+        )
     if len(crossed):
-        c_amp_txt.error("⚠️ Alerta criado pelo modelo: " + ", ".join(crossed["label"]) +
-                        " — conforme nos dados, abaixo de 0,8 nas previsões.")
-    c_amp_txt.caption(HELP["dil"])
+        # Mesmo critério pontual de seleção do RF04 (desenvolvimento.tex): DI dos rótulos >= 0,8 e DI previsto < 0,8.
+        # A redação NÃO afirma que o modelo "criou" o alerta: o IC dos rótulos pode incluir 0,8 (fronteira).
+        lines, any_frontier = [], False
+        for _, r in crossed.iterrows():
+            frontier = r["label_di_ci_low"] <= DI_THRESHOLD <= r["label_di_ci_high"]
+            pred_robust = r["di_ci_high"] < DI_THRESHOLD
+            amp_robust = r["di_amplification_ci_high"] < 0
+            any_frontier |= bool(frontier)
+            txt = (f"- **{r['label']}**: dentro da regra nos dados pela estimativa pontual "
+                   f"(DI {br(r['label_disparate_impact'])}; IC 95% dos rótulos: "
+                   f"{ci(r['label_di_ci_low'], r['label_di_ci_high'])}"
+                   + (", ou seja, **na fronteira** do limiar 0,8" if frontier else "") +
+                   ") e abaixo do limiar nas previsões"
+                   + (" de forma robusta" if pred_robust else "") +
+                   f" (DI {br(r['disparate_impact'])}; IC 95%: {ci(r['di_ci_low'], r['di_ci_high'])}).")
+            if amp_robust:
+                txt += (f" O modelo **amplia a disparidade de forma estatisticamente robusta** "
+                        f"(Δ = {br(r['di_amplification'])}; IC 95%: "
+                        f"{ci(r['di_amplification_ci_low'], r['di_amplification_ci_high'])}, que exclui 0).")
+            else:
+                txt += (f" A amplificação (Δ = {br(r['di_amplification'])}; IC 95%: "
+                        f"{ci(r['di_amplification_ci_low'], r['di_amplification_ci_high'])}) não é robusta.")
+            lines.append(txt)
+        note = ("\n\nQuando o IC dos rótulos inclui 0,8, não se pode afirmar que o grupo esteja conforme nos dados; "
+                "o que se sustenta é o DI previsto abaixo do limiar e a amplificação." if any_frontier else "")
+        c_amp_txt.warning("⚠️ **Abaixo de 0,8 só nas previsões (estimativa pontual)**\n\n" + "\n".join(lines) + note)
+    c_amp_txt.caption(HELP["dil"] + " Passe o mouse sobre o losango para ver Δ e seu intervalo de confiança.")
 
     st.divider()
     st.subheader("Tabela detalhada")
@@ -369,6 +421,14 @@ with tab_eq:
         "IC 95% do DI": [("—" if g == r else ci(a, b)) for g, r, a, b in
                          zip(fair["group"], fair["reference_group"], fair["di_ci_low"], fair["di_ci_high"])],
         "DI nas notas reais": [br(v) for v in fair["label_disparate_impact"]],
+        "IC 95% (notas reais)": [("—" if g == r else ci(a, b)) for g, r, a, b in
+                                 zip(fair["group"], fair["reference_group"], fair["label_di_ci_low"],
+                                     fair["label_di_ci_high"])],
+        "Amplificação Δ": [("—" if g == r else br(v)) for g, r, v in
+                           zip(fair["group"], fair["reference_group"], fair["di_amplification"])],
+        "IC 95% de Δ": [("—" if g == r else ci(a, b)) for g, r, a, b in
+                        zip(fair["group"], fair["reference_group"], fair["di_amplification_ci_low"],
+                            fair["di_amplification_ci_high"])],
         "TPR": [br(v) for v in fair["tpr"]],
         "IC 95% da TPR": [ci(a, b) for a, b in zip(fair["tpr_ci_low"], fair["tpr_ci_high"])],
         "FPR": [br(v) for v in fair["fpr"]],
@@ -378,12 +438,20 @@ with tab_eq:
         "DI": st.column_config.TextColumn(help=HELP["di"]),
         "IC 95% do DI": st.column_config.TextColumn(help=HELP["ic"]),
         "DI nas notas reais": st.column_config.TextColumn(help=HELP["dil"]),
+        "IC 95% (notas reais)": st.column_config.TextColumn(help=HELP["ic"] + " Se inclui 0,8, o grupo está na "
+                                                            "fronteira do limiar nos próprios dados."),
+        "Amplificação Δ": st.column_config.TextColumn(help="Δ = DI do modelo − DI nas notas reais. Negativo: o "
+                                                      "modelo amplia a disparidade já presente nos dados."),
+        "IC 95% de Δ": st.column_config.TextColumn(help=HELP["ic"] + " Se fica inteiro abaixo de 0, a "
+                                                   "amplificação é estatisticamente robusta."),
         "TPR": st.column_config.TextColumn(help=HELP["tpr"]),
         "IC 95% da TPR": st.column_config.TextColumn(help=HELP["ic"]),
         "FPR": st.column_config.TextColumn(help=HELP["fpr"]),
     })
     export = fair[["label", "status", "total_count", "true_positive_label_count", "selection_rate", "disparate_impact",
-                   "di_ci_low", "di_ci_high", "label_disparate_impact", "tpr", "tpr_ci_low", "tpr_ci_high", "fpr"]]
+                   "di_ci_low", "di_ci_high", "label_disparate_impact", "label_di_ci_low", "label_di_ci_high",
+                   "di_amplification", "di_amplification_ci_low", "di_amplification_ci_high",
+                   "tpr", "tpr_ci_low", "tpr_ci_high", "fpr"]]
     st.download_button("⬇️ Baixar tabela (CSV)", export.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
                        file_name=f"auditedu_equidade_{selected_attr}_{selected_year}.csv", mime="text/csv")
 

@@ -116,17 +116,28 @@ def bootstrap_fairness_ci(codes: np.ndarray, y_true: np.ndarray, y_pred: np.ndar
         fpr = np.where(neg > 0, counts[:, :, 1] / neg, np.nan)
         ref_sr = sr[:, [ref_code]]
         di = np.where(ref_sr > 0, sr / ref_sr, np.nan)
+        # DI dos rótulos com a MESMA referência fixa (grupo de maior taxa de seleção do
+        # modelo na amostra original) e as MESMAS réplicas: P(y=1|g) / P(y=1|ref)
+        br = np.where(n_g > 0, pos / n_g, np.nan)
+        ref_br = br[:, [ref_code]]
+        label_di = np.where(ref_br > 0, br / ref_br, np.nan)
+        amp = di - label_di  # NaN se qualquer um dos dois for indefinido
 
     results = []
     for k in range(n_groups):
         di_k = di[:, k]
         valid = ~np.isnan(di_k)
+        ldi_k = label_di[:, k]
+        lvalid = ~np.isnan(ldi_k)
         results.append({
             "di_ci": _nan_percentiles(di_k),
             "tpr_ci": _nan_percentiles(tpr[:, k]),
             "fpr_ci": _nan_percentiles(fpr[:, k]),
             # Fração das réplicas válidas (DI definido) com DI abaixo do limiar de 0,8
             "p_di_below": float((di_k[valid] < DI_THRESHOLD).mean()) if valid.any() else float("nan"),
+            "label_di_ci": _nan_percentiles(ldi_k),
+            "p_label_di_below": float((ldi_k[lvalid] < DI_THRESHOLD).mean()) if lvalid.any() else float("nan"),
+            "amp_ci": _nan_percentiles(amp[:, k]),
         })
     return results
 
@@ -141,7 +152,8 @@ def calculate_fairness_metrics(df_eval: pd.DataFrame, year: int, bootstrap_b: in
     O grupo de referência é o subgrupo de maior taxa de seleção.
 
     bootstrap_b > 0 acrescenta ICs 95% por bootstrap (B réplicas, np.random.default_rng(seed))
-    e o nº de rótulos negativos por grupo. Com bootstrap_b = 0 (padrão, usado por
+    do DI, TPR, FPR, DI dos rótulos e di_amplification (todos das mesmas réplicas) e o
+    nº de rótulos negativos por grupo. Com bootstrap_b = 0 (padrão, usado por
     05_bias_injection.py) o esquema e os valores de saída são exatamente os originais.
     """
     records = []
@@ -226,6 +238,13 @@ def calculate_fairness_metrics(df_eval: pd.DataFrame, year: int, bootstrap_b: in
                     "fpr_ci_high": b_k["fpr_ci"][1],
                     "p_di_below_threshold": b_k["p_di_below"],
                     "bootstrap_b": int(bootstrap_b),
+                    # Acrescentadas depois (I1, parecer nº 04): IC95 do DI dos rótulos e da
+                    # amplificação, das mesmas réplicas e com a mesma referência fixa
+                    "label_di_ci_low": b_k["label_di_ci"][0],
+                    "label_di_ci_high": b_k["label_di_ci"][1],
+                    "p_label_di_below_threshold": b_k["p_label_di_below"],
+                    "di_amplification_ci_low": b_k["amp_ci"][0],
+                    "di_amplification_ci_high": b_k["amp_ci"][1],
                 })
             records.append(rec)
 

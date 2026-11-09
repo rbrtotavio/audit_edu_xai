@@ -1,5 +1,5 @@
 # AuditEdu-XAI — manifesto de integridade SHA-256 (formato sha256sum)
-# Gerado em: 2026-11-08T04:03:22-03:00
+# Gerado em: 2026-11-09T14:00:23-03:00
 # Plataforma: Windows-11-10.0.26200-SP0
 # Python: 3.12.4
 # pandas: 2.3.3
@@ -50,12 +50,12 @@ f0d235397cabdf762d9ab801e1349e3ecf29a1fea41ba467e5e9e5f3004122b7  models/xgboost
 a2e1e275aab30dc3294e0d5ffbb6417ab740dc2f3c8b941269b2155f986fd9d8  data/outputs/bias_injection_summary.parquet
 # data/outputs/data_quality.parquet  12249 bytes
 e7c7f5ce8aa09457611901627f337a13be544db5bbe9b0f9ff0e3c313291f641  data/outputs/data_quality.parquet
-# data/outputs/fairness_metrics_2019.parquet  22172 bytes
-d0d62f5ba1a366cab15e17f836773cb2273739f0cf68013200961ad386f39f15  data/outputs/fairness_metrics_2019.parquet
-# data/outputs/fairness_metrics_2020.parquet  22025 bytes
-621d21ddaaac93dab85289d1ea2bfd276787c7d15fc2ae6c6e5ce03c52c830be  data/outputs/fairness_metrics_2020.parquet
-# data/outputs/fairness_metrics_2021.parquet  22332 bytes
-c91efa4624b3be44803d9cc5efa9e989e41522ff68e0ca0c7fe40cdf94c0249a  data/outputs/fairness_metrics_2021.parquet
+# data/outputs/fairness_metrics_2019.parquet  26318 bytes
+6d591ba456f58880695a413ea3823cdb5e3354f6e07cb912e0d499dafb2ef8c9  data/outputs/fairness_metrics_2019.parquet
+# data/outputs/fairness_metrics_2020.parquet  26152 bytes
+d9c285b87ddccda509e989c4e9244f40cb6084daa26813121ff9e3bb46bf5cd1  data/outputs/fairness_metrics_2020.parquet
+# data/outputs/fairness_metrics_2021.parquet  26491 bytes
+c1686cc6ace5b2ae4a74295f76c01d57f00fe31ebb7f80ab95c4c96edc214751  data/outputs/fairness_metrics_2021.parquet
 # data/outputs/model_metrics_2019.parquet  7425 bytes
 68465916369835a570a16dbaa5686b33427c6b9546f605f72b10ff2cf90dfdef  data/outputs/model_metrics_2019.parquet
 # data/outputs/model_metrics_2020.parquet  7425 bytes

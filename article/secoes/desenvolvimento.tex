@@ -26,7 +26,7 @@ RF07 & Exibir os resultados do experimento de injeção sintética de viés. \\ 
 RF08 & Exibir a evolução do DI entre as edições e permitir o download das métricas em CSV. \\ \hline
 RNF01 & Tempo de resposta da interface inferior a 2~s por interação (meta interna de projeto: 1,5~s). \\ \hline
 RNF02 & Pipeline em lote executável com até 8~GB de memória RAM. \\ \hline
-RNF03 & Reprodutibilidade integral: toda etapa estocástica usa semente fixa (42). \\ \hline
+RNF03 & Reprodutibilidade com as mesmas versões fixadas e o mesmo ambiente: toda etapa estocástica usa semente fixa (42). \\ \hline
 RNF04 & Execução da interface em infraestrutura gratuita de nuvem, com acesso público. \\ \hline
 RNF05 & Portabilidade por contêiner Docker. \\ \hline
 RNF06 & Acessibilidade: nenhum estado comunicado apenas por cor; termos técnicos acompanhados de explicação. \\ \hline
@@ -38,7 +38,7 @@ RNF06 & Acessibilidade: nenhum estado comunicado apenas por cor; termos técnico
 \section{Arquitetura Desacoplada}
 \label{sec:arq_visao}
 
-O principal obstáculo de projeto é o custo computacional. Treinar modelos com validação cruzada, calcular valores SHAP para milhares de instâncias e executar 240 retreinamentos no experimento de injeção são tarefas incompatíveis com uma interface que deve responder em menos de dois segundos em um servidor gratuito de nuvem, com poucos núcleos de processamento. A solução adotada é uma \textbf{arquitetura desacoplada em duas camadas}, ilustrada na Figura~\ref{fig:arquitetura}:
+O principal obstáculo de projeto é o custo computacional. Treinar modelos com validação cruzada, calcular valores SHAP para milhares de instâncias e executar 240 retreinamentos no experimento de injeção são tarefas incompatíveis com uma interface que deve responder em menos de dois segundos em servidores gratuitos de nuvem, tipicamente com poucos núcleos. A solução adotada é uma \textbf{arquitetura desacoplada em duas camadas}, ilustrada na Figura~\ref{fig:arquitetura}:
 \begin{itemize}
     \item a \textbf{camada offline} executa todo o processamento pesado, em lote e fora do ambiente de produção, e materializa os resultados como arquivos Parquet estáticos;
     \item a \textbf{camada online} apenas lê e apresenta esses arquivos. Nenhum modelo é treinado e nenhum valor SHAP é calculado em tempo de requisição.
@@ -91,7 +91,7 @@ O contrato entre as camadas resume-se ao conjunto de arquivos em \texttt{data/ou
 \section{Pipeline em Lote}
 \label{sec:pipeline}
 
-A camada offline é composta por quatro módulos sequenciais, cada um com entrada e saída persistidas em disco, e por dois módulos complementares de validação e medição (Quadro~\ref{qua:modulos}). A persistência intermediária permite reexecutar qualquer etapa isoladamente e inspecionar seus resultados, característica essencial para a rastreabilidade de uma auditoria.
+A camada offline é composta por quatro módulos sequenciais (01--04), cada um com entrada e saída persistidas em disco, e por quatro módulos complementares de validação, medição, qualidade de dados e integridade (05--08), descritos no Quadro~\ref{qua:modulos}. A persistência intermediária permite reexecutar qualquer etapa isoladamente e inspecionar seus resultados, característica essencial para a rastreabilidade de uma auditoria.
 
 \begin{quadro}[htbp]
 \centering
@@ -103,7 +103,7 @@ A camada offline é composta por quatro módulos sequenciais, cada um com entrad
 \textbf{Módulo} & \textbf{Entrada $\rightarrow$ Saída} & \textbf{Responsabilidade} \\ \hline
 \texttt{01\_etl.py} & CSV bruto $\rightarrow$ \texttt{raw\_filtered\_\{ano\}} & Leitura em blocos de 100.000 linhas restrita às colunas do contrato; filtro de presença nas quatro provas; conversão de tipos. \\ \hline
 \texttt{02\_preprocessing.py} & \texttt{raw\_filtered} $\rightarrow$ \texttt{sampled\_\{ano\}} & Imputação pela moda, cálculo da NMG, binarização pela mediana populacional e amostragem estratificada de 50.000 registros. \\ \hline
-\texttt{03\_trainer.py} & \texttt{sampled} $\rightarrow$ \texttt{xgboost\_\{ano\}.joblib} & Partição 80/20, \textit{One-Hot Encoding}, \textit{Grid Search} com validação cruzada ($k=5$, AUC-ROC) e persistência do \textit{pipeline} completo. \\ \hline
+\texttt{03\_trainer.py} & \texttt{sampled} $\rightarrow$ \texttt{xgboost\_\allowbreak\{ano\}.joblib} & Partição 80/20, \textit{One-Hot Encoding}, \textit{Grid Search} com validação cruzada ($k=5$, AUC-ROC) e persistência do \textit{pipeline} completo. \\ \hline
 \texttt{04\_audit\_engine.py} & modelo + \texttt{sampled} $\rightarrow$ métricas, SHAP & Reprodução do conjunto de teste; métricas de desempenho; DI, DI dos rótulos, TPR e FPR por subgrupo; matriz TreeSHAP nativa. \\ \hline
 \texttt{05\_bias\_injection.py} & modelo + \texttt{sampled} $\rightarrow$ curva de sensibilidade & Experimento de validação (Seção~\ref{sec:injecao}), reutilizando o motor de equidade do módulo 04. \\ \hline
 \texttt{06\_benchmark\_app.py} & \texttt{app.py} $\rightarrow$ tempos de resposta & Medição do requisito RNF01 em modo \textit{headless}, sem restrição e com afinidade restrita a 2 núcleos. \\ \hline
@@ -188,7 +188,7 @@ A interface organiza-se em uma barra lateral, uma faixa de indicadores e três a
     \item a AUC-ROC do modelo.
 \end{itemize}
 
-\textbf{Aba ``Visão Geral de Equidade''} (Figura~\ref{fig:dash_equidade}). O gráfico principal apresenta o DI de cada subgrupo em barras horizontais, com o intervalo de confiança de 95\% na extremidade de cada barra e o limiar de 0,8 identificado em legenda (RF03). Um texto lateral interpreta o resultado, indica quantos alertas se mantêm em ao menos 95\% das reamostragens \textit{bootstrap} e destaca os grupos de baixa precisão. Um segundo gráfico confronta, para cada grupo, o DI calculado sobre as notas reais e o DI das previsões, sinalizando os casos em que o alerta é \textbf{criado} pelo modelo (RF04). Completam a aba:
+\textbf{Aba ``Visão Geral de Equidade''} (Figura~\ref{fig:dash_equidade}). O gráfico principal apresenta o DI de cada subgrupo em barras horizontais, com o intervalo de confiança de 95\% na extremidade de cada barra e o limiar de 0,8 identificado em legenda (RF03). Um texto lateral interpreta o resultado, indica quantos alertas se mantêm em ao menos 95\% das reamostragens \textit{bootstrap} e destaca os grupos de baixa precisão. Um segundo gráfico confronta, para cada grupo, o DI calculado sobre as notas reais e o DI das previsões, sinalizando os grupos cujo DI pontual é de pelo menos 0,8 nas notas reais e inferior a 0,8 nas previsões (RF04). Para esses grupos, o aviso mostra o intervalo de confiança de 95\% do DI dos rótulos e da amplificação $\Delta$ e indica que o grupo está ``na fronteira'' quando o intervalo dos rótulos inclui 0,8. A tabela detalhada e o CSV trazem essas mesmas colunas. Completam a aba:
 \begin{itemize}
     \item uma tabela detalhada com taxa de seleção, DI e TPR com intervalos de confiança, e FPR;
     \item o download das métricas em CSV;
@@ -200,7 +200,7 @@ A interface organiza-se em uma barra lateral, uma faixa de indicadores e três a
 \centering
 \caption{Dashboard: aba ``Visão Geral de Equidade'' (ENEM 2020, raça/cor)}
 \label{fig:dash_equidade}
-\includegraphics[width=\textwidth]{figuras/dashboard_equidade.png}
+\includegraphics[width=\textwidth,height=0.85\textheight,keepaspectratio]{figuras/dashboard_equidade.png}
 \fonte{Elaborado pelo autor (captura da interface).}
 \end{figure}
 
@@ -227,11 +227,11 @@ Esse recurso pode subsidiar, sem substituir, as informações sobre critérios e
 \fonte{Elaborado pelo autor (captura da interface).}
 \end{figure}
 
-\textbf{Aba ``Injeção Sintética de Viés'' (RF07, Figura~\ref{fig:dash_injecao}).} Torna visível ao usuário a validação descrita na Seção~\ref{sec:injecao}. Para o grupo-alvo escolhido (Pardo ou Indígena) e a edição selecionada, dois gráficos lado a lado mostram a queda do DI nos cenários de injeção e de controle e a variação, muito menor, da AUC-ROC. Três indicadores sintetizam o efeito com 50\% de intensidade. A aba materializa para o usuário o argumento central do trabalho: um modelo validado apenas por métricas agregadas poderia ser aprovado mesmo excluindo sistematicamente um grupo.
+\textbf{Aba ``Injeção Sintética de Viés'' (RF07, Figura~\ref{fig:dash_injecao}).} Torna visível ao usuário a validação descrita na Seção~\ref{sec:injecao}. Para o grupo-alvo escolhido (Parda ou Indígena) e a edição selecionada, dois gráficos lado a lado mostram a queda do DI nos cenários de injeção e de controle e a variação, muito menor, da AUC-ROC. Três indicadores sintetizam o efeito com 50\% de intensidade. A aba materializa para o usuário o argumento central do trabalho: um modelo validado apenas por métricas agregadas poderia ser aprovado mesmo excluindo sistematicamente um grupo.
 
 \begin{figure}[htbp]
 \centering
-\caption{Dashboard: aba ``Injeção Sintética de Viés'' (grupo-alvo Pardo, ENEM 2020)}
+\caption{Dashboard: aba ``Injeção Sintética de Viés'' (grupo-alvo Parda, ENEM 2020)}
 \label{fig:dash_injecao}
 \includegraphics[width=\textwidth]{figuras/dashboard_injecao.png}
 \fonte{Elaborado pelo autor (captura da interface).}
@@ -244,6 +244,7 @@ Esse recurso pode subsidiar, sem substituir, as informações sobre critérios e
 A camada online é distribuída de duas formas complementares: uma \textbf{implantação pública} em plataforma gratuita de nuvem, que dá acesso imediato à ferramenta, e uma \textbf{imagem Docker} \cite{merkel2014docker}, que garante a portabilidade para qualquer infraestrutura baseada em contêineres.
 
 \subsection{Imagem Docker}
+\label{sec:imagem_docker}
 
 A imagem é construída em dois estágios (\textit{multi-stage build}), conforme o Quadro~\ref{qua:docker}. O estágio \textit{builder} instala as dependências em um ambiente virtual isolado. O estágio \textit{runner} parte de uma imagem base limpa e recebe apenas esse ambiente, a interface e os Parquets, de modo que ferramentas de instalação e caches não chegam à imagem final.
 
@@ -257,7 +258,7 @@ A imagem é construída em dois estágios (\textit{multi-stage build}), conforme
 Imagem base & \texttt{python:3.12-slim}, nos dois estágios. \\ \hline
 Estágio \textit{builder} & Cria \texttt{/opt/venv} e instala \texttt{requirements.txt}, que contém somente as dependências da interface, com versões fixadas idênticas às validadas localmente. \\ \hline
 Estágio \textit{runner} & Copia \texttt{/opt/venv}, \texttt{app.py} e \texttt{data/outputs/}; executa como usuário não privilegiado (UID 1000), boa prática de segurança exigida por diversas plataformas de contêiner. \\ \hline
-Configuração & Porta 7860; servidor Streamlit \textit{headless}; limite de duas \textit{threads} numéricas, compatível com ambientes de poucos núcleos; diretórios de cache graváveis para as bibliotecas de visualização. \\ \hline
+Configuração & Porta 7860 (mantida do planejamento inicial; configurável); servidor Streamlit \textit{headless}; limite de duas \textit{threads} numéricas, compatível com ambientes de poucos núcleos; diretórios de cache graváveis para as bibliotecas de visualização. \\ \hline
 Contexto de \textit{build} & Arquivo \texttt{.dockerignore} em modo de lista de permissão, que exclui os microdados brutos (aproximadamente 5,9~GB), modelos e o texto da monografia. \\ \hline
 Monitoramento & Verificação de saúde (\textit{health check}) periódica no \textit{endpoint} nativo do Streamlit. \\ \hline
 \end{tabular}
@@ -267,6 +268,7 @@ Monitoramento & Verificação de saúde (\textit{health check}) periódica no \t
 A imagem é validada automaticamente por integração contínua (GitHub Actions) a cada alteração da interface, das dependências ou dos artefatos. O \textit{workflow} constrói a imagem, executa o contêiner com o processamento limitado a 2 CPUs, aguarda a resposta do \textit{health check} e, por fim, executa a interface completa em modo \textit{headless} dentro do próprio contêiner, para as três edições e os dois atributos protegidos, falhando se qualquer exceção ocorrer. Dessa forma, a portabilidade não é apenas declarada, mas verificada a cada mudança.
 
 \subsection{Implantação Pública}
+\label{sec:implantacao_publica}
 
 O planejamento inicial previa hospedar a imagem no Hugging Face Spaces. Durante o desenvolvimento, porém, a plataforma passou a exigir plano pago para novos \textit{Spaces} baseados em Docker, o que contrariaria a premissa de custo nulo. A interface foi então implantada no \textbf{Streamlit Community Cloud} \cite{streamlit2026}, serviço gratuito que executa aplicações Streamlit diretamente a partir de um repositório público, e está disponível em:
 \begin{center}
@@ -281,4 +283,33 @@ Em ambos os casos, o pipeline em lote é executado localmente e seus resultados 
 \section{Reprodutibilidade}
 \label{sec:reprodutibilidade}
 
-A reprodutibilidade foi tratada como requisito (RNF03), e não como consequência. Todas as etapas estocásticas usam a semente 42 ou geradores dela derivados. Os parâmetros fixos do projeto estão documentados em um contrato de dados versionado no repositório. O módulo \texttt{08\_build\_manifest.py} registra em um manifesto os \textit{hashes} SHA-256 de todos os arquivos de dados, dos modelos e dos artefatos de saída, junto com as versões das bibliotecas, permitindo verificar se uma reexecução partiu exatamente das mesmas entradas. Além disso, as tabelas e figuras do Capítulo~\ref{cap:resultados} não são transcritas manualmente: um \textit{script} lê os arquivos Parquet e gera o código \LaTeX\ correspondente. Assim, a sequência ``executar o pipeline, gerar as tabelas e compilar o documento'' reproduz integralmente os números apresentados nesta monografia, e qualquer divergência entre texto e artefato torna-se detectável.
+A reprodutibilidade foi tratada como requisito (RNF03), e não como consequência. Todas as etapas estocásticas usam a semente 42 ou geradores dela derivados. Os parâmetros fixos do projeto estão documentados em um contrato de dados versionado no repositório. O módulo \texttt{08\_build\_manifest.py} registra em um manifesto os \textit{hashes} SHA-256 de todos os arquivos de dados, dos modelos e dos artefatos de saída, junto com as versões das bibliotecas, permitindo verificar se uma reexecução partiu exatamente das mesmas entradas. Além disso, as tabelas e figuras do Capítulo~\ref{cap:resultados} não são transcritas manualmente: um \textit{script} lê os arquivos Parquet e gera o código \LaTeX\ correspondente. Assim, a sequência ``executar o pipeline, gerar as tabelas e compilar o documento'', com as mesmas versões fixadas das bibliotecas e o mesmo ambiente, reproduz os números apresentados nesta monografia, e qualquer divergência entre texto e artefato torna-se detectável.
+
+% ---------------------------------------------------------------------------
+\section{Síntese: Requisitos e Evidências}
+\label{sec:req_evidencia}
+
+O Quadro~\ref{qua:req_evidencia} associa cada requisito do Quadro~\ref{qua:requisitos} à evidência de seu atendimento apresentada neste capítulo.
+
+\begin{quadro}[htbp]
+\centering
+\caption{Requisitos do artefato e evidências de atendimento}
+\label{qua:req_evidencia}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.2cm}|>{\raggedright\arraybackslash}p{12.3cm}|}
+\hline
+\textbf{Requisito} & \textbf{Evidência} \\ \hline
+RF01, RF02 & Seletores de edição e de atributo protegido na barra lateral (Seção~\ref{sec:interface}). \\ \hline
+RF03, RF04, RF08 & Aba ``Visão Geral de Equidade'': DI com intervalo de confiança e alerta, DI dos rótulos, TPR e FPR, evolução entre edições e download em CSV (Seção~\ref{sec:interface} e Figura~\ref{fig:dash_equidade}). \\ \hline
+RF05 & Importância global e \textit{summary plot} sob demanda (Figura~\ref{fig:dash_shap}). \\ \hline
+RF06 & Explicação local com perfil, chance estimada e \textit{waterfall plot} (Figura~\ref{fig:dash_local}). \\ \hline
+RF07 & Aba ``Injeção Sintética de Viés'' (Figura~\ref{fig:dash_injecao}). \\ \hline
+RNF01 & Medição local do tempo de resposta, sem restrição e com 2 núcleos (Tabela~\ref{tab:app_benchmark}). \\ \hline
+RNF02 & Atendido por projeto (leitura em blocos e seleção antecipada de colunas, Seção~\ref{sec:desempenho}), sem medição formal do consumo de memória. \\ \hline
+RNF03 & Sementes fixas, versões fixadas e manifesto SHA-256 (Seção~\ref{sec:reprodutibilidade}). \\ \hline
+RNF04 & Implantação pública no Streamlit Community Cloud (Seção~\ref{sec:implantacao_publica}). \\ \hline
+RNF05 & Imagem Docker validada por integração contínua (Seção~\ref{sec:imagem_docker}). \\ \hline
+RNF06 & Estados comunicados por ícone e texto, além da cor, e dicas explicativas (Seção~\ref{sec:interface}). \\ \hline
+\end{tabular}
+\fonte{Elaborado pelo autor.}
+\end{quadro}

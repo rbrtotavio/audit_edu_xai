@@ -1,7 +1,7 @@
 \chapter{Metodologia}
 \label{cap:metodologia}
 
-Este capítulo descreve os procedimentos metodológicos, as técnicas de engenharia de dados e os protocolos experimentais mobilizados para a concepção, o desenvolvimento e a validação da ferramenta de auditoria algorítmica proposta. A pesquisa caracteriza-se como aplicada, de abordagem quantitativa e natureza exploratória, orientada à construção e à avaliação de um artefato tecnológico voltado a um problema real de justiça algorítmica em dados educacionais.
+Este capítulo descreve os procedimentos metodológicos, as técnicas de engenharia de dados e os protocolos experimentais mobilizados para a concepção, o desenvolvimento e a validação da ferramenta de auditoria algorítmica proposta. A pesquisa caracteriza-se como aplicada, de abordagem quantitativa e natureza exploratória e experimental (avaliação do artefato), orientada à construção e à avaliação de um artefato tecnológico voltado a um problema real de justiça algorítmica em dados educacionais.
 
 % ---------------------------------------------------------------------------
 \section{Abordagem de Pesquisa: \textit{Design Science Research}}
@@ -18,10 +18,10 @@ O ciclo de vida do trabalho é conduzido segundo a metodologia de \textit{Design
 \textbf{Atividade DSR} & \textbf{Realização neste trabalho} \\ \hline
 1. Identificação do problema e motivação & Modelos preditivos treinados com microdados do ENEM podem reproduzir e amplificar desigualdades de raça/cor e renda sem que métricas convencionais de desempenho o revelem (Capítulo~\ref{cap:introducao}). \\ \hline
 2. Definição dos objetivos da solução & Quantificar disparidades (Impacto Disparate, Paridade Demográfica, \textit{Equal Opportunity}), explicar suas origens (SHAP) e operar em infraestrutura computacional restrita. \\ \hline
-3. Projeto e desenvolvimento & Pipeline em lote de quatro módulos (ingestão, pré-processamento, treinamento e motor de auditoria) e interface interativa desacoplada (Seção~\ref{sec:arquitetura}). \\ \hline
+3. Projeto e desenvolvimento & Pipeline em lote (ingestão, pré-processamento, treinamento, motor de auditoria e módulos de validação e reprodutibilidade) e interface interativa desacoplada (Seção~\ref{sec:arquitetura}). \\ \hline
 4. Demonstração & Aplicação do artefato aos microdados das edições de 2019, 2020 e 2021 do ENEM (Capítulo~\ref{cap:resultados}). \\ \hline
 5. Avaliação & Experimento controlado de injeção sintética de viés com controle negativo, para medir a sensibilidade dos indicadores (Seção~\ref{sec:injecao}). \\ \hline
-6. Comunicação & Esta monografia, o código-fonte aberto e o painel interativo. \\ \hline
+6. Comunicação & Esta monografia, o código publicado em repositório público e o painel interativo. \\ \hline
 \end{tabular}
 \fonte{Adaptado de \citeonline{peffers2007design}.}
 \end{quadro}
@@ -43,7 +43,7 @@ Do arquivo de participantes de cada edição são extraídas exclusivamente as c
 \begin{tabular}{|p{4.6cm}|p{3.4cm}|p{6.5cm}|}
 \hline
 \textbf{Variável} & \textbf{Papel} & \textbf{Domínio} \\ \hline
-\texttt{TP\_PRESENCA\_CN/CH/LC/MT} & Filtro de absenteísmo & 1 = presente na prova \\ \hline
+\texttt{TP\_PRESENCA\_\allowbreak CN/CH/LC/MT} & Filtro de absenteísmo & 1 = presente na prova \\ \hline
 \texttt{NU\_NOTA\_CN/CH/LC/MT/ REDACAO} & Construção da variável-alvo & Notas das quatro áreas e da redação \\ \hline
 \texttt{TP\_COR\_RACA} & Atributo protegido e preditor & 0 Não declarada; 1 Branca; 2 Preta; 3 Parda; 4 Amarela; 5 Indígena \\ \hline
 \texttt{Q006} & Atributo protegido e preditor & Renda familiar mensal, faixas A (nenhuma renda) a Q (acima de 20 salários mínimos) \\ \hline
@@ -115,6 +115,7 @@ Toda a auditoria (métricas de equidade e valores SHAP) é calculada \textbf{exc
 Esse isolamento evita que o diagnóstico de viés seja contaminado por exemplos memorizados pelo modelo, cujas predições tendem a ser artificialmente próximas dos rótulos e subestimariam as disparidades que o classificador produziria em operação. Cada registro auditado mantém o identificador da linha na amostra original, assegurando a rastreabilidade entre predições, explicações e dados de entrada.
 
 \subsection{Métricas de Equidade Algorítmica}
+\label{sec:metricas_equidade}
 
 Seja $\hat{Y}$ a predição do modelo, $Y$ o rótulo real e $G$ um atributo protegido (raça/cor ou faixa de renda) com subgrupos $g$. A \textbf{taxa de seleção} do subgrupo $g$ é a proporção de predições positivas:
 \begin{equation}
@@ -129,12 +130,12 @@ O critério de \textbf{Paridade Demográfica} exige que a taxa de seleção inde
 \end{equation}
 O grupo de referência é determinado empiricamente como o subgrupo de maior taxa de seleção, de modo que $\mathrm{DI}_g \in [0, 1]$. Adota-se a regra dos quatro quintos \cite{eeoc1978uniform}: valores de $\mathrm{DI}_g < 0{,}8$ disparam um alerta de impacto adverso contra o subgrupo $g$. A regra foi concebida no contexto do direito trabalhista norte-americano e é empregada aqui como \textbf{indicador de triagem de disparidade estatística}, e não como teste jurídico de discriminação. Um alerta sinaliza que a disparidade merece investigação, mas não estabelece, por si só, ilicitude ou intenção discriminatória no ordenamento brasileiro.
 
-Para distinguir o viés já presente nos dados daquele produzido pelo modelo, calcula-se também o DI dos \textbf{rótulos reais}, substituindo $\hat{Y}$ por $Y$ na Equação~\eqref{eq:ts}, e a respectiva diferença:
+Para distinguir o viés já presente nos dados daquele produzido pelo modelo, calcula-se também o DI dos \textbf{rótulos reais}, $\mathrm{DI}_{y,g}$, substituindo $\hat{Y}$ por $Y$ na Equação~\eqref{eq:ts}, e a sua diferença em relação ao DI das predições, $\mathrm{DI}_{\hat{y},g} \equiv \mathrm{DI}_g$:
 \begin{equation}
-\mathrm{DI}^{(y)}_g = \frac{P(Y=1 \mid G=g)}{P(Y=1 \mid G=r)}, \qquad \Delta_g = \mathrm{DI}_g - \mathrm{DI}^{(y)}_g.
+\mathrm{DI}_{y,g} = \frac{P(Y=1 \mid G=g)}{P(Y=1 \mid G=r)}, \qquad \Delta_g = \mathrm{DI}_{\hat{y},g} - \mathrm{DI}_{y,g}.
 \label{eq:amplificacao}
 \end{equation}
-Valores $\Delta_g < 0$ indicam que o classificador \textbf{amplifica} a disparidade existente nos dados históricos.
+Valores $\Delta_g < 0$ indicam que o classificador \textbf{amplifica} a disparidade existente nos dados históricos. Nas tabelas, o índice do grupo é omitido ($\mathrm{DI}_y$, $\mathrm{DI}_{\hat{y}}$ e $\Delta$). O símbolo $\Delta$ isolado denota sempre essa amplificação; quando precede o nome de uma métrica (por exemplo, $\Delta\mathrm{AUC}$), indica a variação dessa métrica em relação à linha de base.
 
 A Paridade Demográfica ignora se as predições estão corretas. Por isso, o artefato incorpora o critério de \textbf{Igualdade de Oportunidades} (\textit{Equal Opportunity}) \cite{hardt2016equality}, que exige taxas de verdadeiros positivos (TPR) iguais entre os grupos, e reporta também a taxa de falsos positivos (FPR), que, junto à TPR, compõe o critério de \textit{Equalized Odds}:
 \begin{align}
@@ -145,7 +146,7 @@ A violação é quantificada pela diferença $\mathrm{TPR}_g - \mathrm{TPR}_r$ e
 
 \subsection{Incerteza Estatística}
 
-Como as métricas de equidade são estimadas a partir de uma amostra finita, e alguns subgrupos são pequenos, o artefato acompanha cada estimativa de um intervalo de confiança de 95\% obtido por \textit{bootstrap} não paramétrico \cite{efron1993bootstrap}. O conjunto de teste é reamostrado com reposição $B = 2.000$ vezes, com semente 42, e em cada réplica são recalculados o DI, a TPR e a FPR de cada subgrupo, mantendo fixa a identidade do grupo de referência observado. Os limites do intervalo são os percentis 2,5 e 97,5 da distribuição resultante. Registra-se também a proporção de réplicas em que $\mathrm{DI}_g < 0{,}8$, que indica quão estável é o alerta da regra dos quatro quintos. Como o modelo permanece fixo, os intervalos capturam a variabilidade amostral do conjunto de teste, mas não a variabilidade decorrente do treinamento.
+Como as métricas de equidade são estimadas a partir de uma amostra finita, e alguns subgrupos são pequenos, o artefato acompanha cada estimativa de um intervalo de confiança de 95\% obtido por \textit{bootstrap} não paramétrico \cite{efron1993bootstrap}. O conjunto de teste é reamostrado com reposição $B = 2.000$ vezes, com semente 42, e em cada réplica são recalculados o DI, a TPR e a FPR de cada subgrupo, mantendo fixa a identidade do grupo de referência observado. As mesmas réplicas fornecem também os intervalos do DI dos rótulos reais ($\mathrm{DI}_{y,g}$) e da amplificação ($\Delta_g$, Equação~\eqref{eq:amplificacao}), o que permite verificar se a diferença entre dados e modelo é distinguível de zero. Os limites do intervalo são os percentis 2,5 e 97,5 da distribuição resultante. Registra-se também a proporção de réplicas em que $\mathrm{DI}_g < 0{,}8$, que indica quão estável é o alerta da regra dos quatro quintos. Como o modelo permanece fixo, os intervalos capturam a variabilidade amostral do conjunto de teste, mas não a variabilidade decorrente do treinamento.
 
 \subsection{Explicabilidade via TreeSHAP}
 
@@ -193,7 +194,7 @@ Rebaixar rótulos reduz a prevalência global de positivos, o que, por si só, p
 \subsection{Desenho Experimental}
 
 \begin{itemize}
-    \item \textbf{Grupos-alvo:} Parda, o maior grupo não branco, e Indígena, o menor grupo e o de menor taxa de seleção, de modo a avaliar a ferramenta em grupos de tamanhos contrastantes;
+    \item \textbf{Grupos-alvo:} Parda, o maior grupo não branco, e Indígena, o menor grupo e o de menor taxa de seleção em 2019 e 2020, de modo a avaliar a ferramenta em grupos de tamanhos contrastantes;
     \item \textbf{Intensidades:} $p \in \{0\%, 10\%, 25\%, 50\%\}$;
     \item \textbf{Cenários:} injeção direcionada e controle negativo;
     \item \textbf{Repetições:} cinco por combinação, com geradores pseudoaleatórios derivados deterministicamente da semente 42, da edição, do grupo, da intensidade, do cenário e da repetição;
@@ -201,10 +202,14 @@ Rebaixar rótulos reduz a prevalência global de positivos, o que, por si só, p
     \item \textbf{Avaliação:} sobre o conjunto de teste \textbf{original}, com rótulos não alterados, utilizando o mesmo motor de equidade da auditoria principal. Registram-se o DI, a TPR e a FPR do grupo-alvo, o valor SHAP médio da variável indicadora do grupo entre seus membros, a acurácia e a AUC-ROC.
 \end{itemize}
 
-O desenho totaliza $3 \text{ edições} \times 2 \text{ grupos} \times 4 \text{ intensidades} \times 2 \text{ cenários} \times 5 \text{ repetições} = 240$ execuções. São testadas três hipóteses:
+O desenho totaliza
+\begin{equation*}
+3 \text{ edições} \times 2 \text{ grupos} \times 4 \text{ intensidades} \times 2 \text{ cenários} \times 5 \text{ repetições} = 240
+\end{equation*}
+execuções. São testadas três hipóteses:
 \begin{description}
     \item[H1 (sensibilidade):] no cenário de injeção, o DI médio do grupo-alvo decresce monotonicamente com $p$;
-    \item[H2 (especificidade):] a queda do DI no controle negativo é substancialmente menor que na injeção, ou seja, $\mathrm{EL}_{g^{*}}(p) < 0$;
+    \item[H2 (especificidade):] a queda do DI no controle negativo é menor que na injeção direcionada, ou seja, o efeito líquido é negativo, $\mathrm{EL}_{g^{*}}(p) < 0$, para toda intensidade $p > 0$, em cada grupo e edição;
     \item[H3 (baixa sensibilidade das métricas convencionais):] a AUC-ROC varia pouco entre as intensidades, quando comparada à variação do DI, evidenciando que métricas agregadas de desempenho são pouco sensíveis ao viés introduzido.
 \end{description}
 
@@ -220,4 +225,4 @@ O pipeline foi implementado em Python~3.12 com as bibliotecas pandas~2.3.3, PyAr
 \section{Considerações Éticas}
 \label{sec:etica}
 
-O trabalho utiliza exclusivamente microdados públicos e anonimizados, sem qualquer possibilidade de identificação individual dos participantes, em conformidade com a Lei Geral de Proteção de Dados. A identificação de candidatos na explicação local refere-se apenas ao índice da linha na amostra. O modelo treinado tem finalidade exclusiva de objeto de auditoria e não deve ser empregado para decisões sobre candidatos reais: o próprio diagnóstico produzido pela ferramenta demonstra por que modelos dessa natureza não devem ser utilizados sem salvaguardas de equidade.
+O trabalho utiliza exclusivamente microdados públicos e anonimizados, sem identificadores diretos dos participantes, em conformidade com a LGPD. A identificação de candidatos na explicação local refere-se apenas ao índice da linha na amostra. O modelo treinado tem finalidade exclusiva de objeto de auditoria e não deve ser empregado para decisões sobre candidatos reais: o próprio diagnóstico produzido pela ferramenta demonstra por que modelos dessa natureza não devem ser utilizados sem salvaguardas de equidade.

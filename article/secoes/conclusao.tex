@@ -6,14 +6,14 @@ Este trabalho partiu da constatação de que modelos preditivos treinados com mi
 % ---------------------------------------------------------------------------
 \section{Atendimento aos Objetivos}
 
-O objetivo geral foi atingido: a ferramenta detecta, quantifica e explica vieses em modelos preditivos de desempenho educacional. Os objetivos específicos foram cumpridos da seguinte forma:
+Quanto à questão de pesquisa formulada na Introdução, a resposta é afirmativa, com as ressalvas apresentadas na Seção~\ref{sec:res_limitacoes}. A ferramenta, executável em infraestrutura gratuita, detectou, quantificou e explicou vieses de raça/cor e renda em modelos preditivos do ENEM e mostrou-se sensível a vieses aos quais a AUC-ROC pouco respondeu. O objetivo geral foi atingido: a ferramenta detecta, quantifica e explica vieses em modelos preditivos de desempenho educacional. Os objetivos específicos foram cumpridos da seguinte forma:
 \begin{itemize}
-    \item \textbf{Pipeline de dados:} os módulos de ingestão e pré-processamento processam os microdados de três edições em blocos e persistem os resultados em Parquet, dentro do limite de memória estabelecido (Capítulo~\ref{cap:desenvolvimento});
+    \item \textbf{Pipeline de dados:} os módulos de ingestão e pré-processamento processam os microdados de três edições em blocos e persistem os resultados em Parquet, com leitura em blocos projetada para o limite de 8~GB (RNF02) (Capítulo~\ref{cap:desenvolvimento});
     \item \textbf{Modelo-alvo:} classificadores XGBoost foram otimizados por validação cruzada e avaliados em conjunto de teste isolado, com AUC-ROC em torno de 0,75 (Seção~\ref{sec:res_desempenho});
     \item \textbf{Motor de equidade:} o artefato calcula Paridade Demográfica, Impacto Disparate, DI dos rótulos reais, TPR e FPR exclusivamente sobre dados não vistos no treinamento (Seções~\ref{sec:res_raca} a~\ref{sec:res_amplificacao});
     \item \textbf{Explicabilidade:} a camada TreeSHAP quantifica a contribuição de cada atributo, global e localmente (Seção~\ref{sec:res_shap});
-    \item \textbf{Interface:} o painel Streamlit atende a todos os requisitos funcionais com tempo de resposta inferior a 2~s em todas as execuções medidas em ambiente local, inclusive com o processamento restrito a 2 núcleos (Seção~\ref{sec:desempenho});
-    \item \textbf{Validação:} o experimento de injeção sintética de viés confirmou as três hipóteses: sensibilidade, especificidade e baixa sensibilidade das métricas convencionais (Seção~\ref{sec:res_injecao}).
+    \item \textbf{Interface:} o painel Streamlit atende aos requisitos funcionais, conforme o Quadro~\ref{qua:req_evidencia}, com tempo de resposta inferior a 2~s em todas as execuções medidas em ambiente local, inclusive com o processamento restrito a 2 núcleos (Seção~\ref{sec:desempenho});
+    \item \textbf{Validação:} o experimento de injeção sintética de viés corroborou as três hipóteses: sensibilidade, especificidade e baixa sensibilidade das métricas convencionais (Seção~\ref{sec:res_injecao}).
 \end{itemize}
 
 % ---------------------------------------------------------------------------
@@ -21,27 +21,31 @@ O objetivo geral foi atingido: a ferramenta detecta, quantifica e explica vieses
 
 As contribuições do trabalho situam-se em três dimensões.
 
-\textbf{Contribuição tecnológica.} Um artefato de código aberto que combina, em um mesmo fluxo, métricas de equidade de grupo, decomposição do viés entre dados e modelo, explicações TreeSHAP e uma interface acessível a usuários sem formação em programação. Sua arquitetura desacoplada, com pré-cálculo em lote e leitura de arquivos estáticos, demonstra, com a implantação pública em plataforma gratuita (\url{https://auditeduxai.streamlit.app/}), que a auditoria algorítmica pode ser oferecida sem custo de infraestrutura. Além disso, a imagem Docker validada por integração contínua assegura a portabilidade para outros ambientes. O padrão é replicável para outras bases públicas.
+\textbf{Contribuição tecnológica.} Um artefato, com código publicado em repositório público, que combina, em um mesmo fluxo, métricas de equidade de grupo, decomposição do viés entre dados e modelo, explicações TreeSHAP e uma interface acessível a usuários sem formação em programação. Sua arquitetura desacoplada, com pré-cálculo em lote e leitura de arquivos estáticos, demonstra, com a implantação pública em plataforma gratuita (\url{https://auditeduxai.streamlit.app/}), que a auditoria algorítmica pode ser oferecida sem custo de infraestrutura. Além disso, a imagem Docker validada por integração contínua assegura a portabilidade para outros ambientes. O padrão é replicável para outras bases públicas.
 
 \textbf{Contribuição empírica.} A aplicação aos dados de 2019 a 2021 produziu três achados substantivos:
 \begin{itemize}
     \item um modelo com desempenho moderado viola a regra dos quatro quintos para todos os grupos não brancos e para candidatos com renda familiar de até 2,5 salários mínimos, nas três edições;
-    \item o modelo \textbf{amplifica} a disparidade presente nos dados, chegando a criar impacto adverso em grupos que satisfaziam a regra nos rótulos reais;
+    \item o modelo \textbf{amplifica} a disparidade presente nos dados, de forma estatisticamente robusta em 13 das 15 combinações de raça/cor e edição e nas faixas de renda mais baixas, levando para baixo do limiar, de forma robusta, grupos cujo DI nos rótulos reais estava na fronteira de 0,8;
     \item a ausência de computador na residência é o atributo mais influente nas predições, e sua importância cresce entre 2019 e 2021, em coincidência temporal com o ensino remoto da pandemia. O achado é compatível com a hipótese de agravamento da exclusão digital, embora não permita inferência causal.
 \end{itemize}
 
-\textbf{Contribuição metodológica.} Um protocolo de validação por injeção de viés com controle negativo pareado e efeito líquido, que separa o efeito do viés direcionado do efeito genérico de alterar a prevalência de rótulos. O protocolo evidenciou que, sob um viés que leva o DI de um grupo a praticamente zero, a AUC-ROC varia, em média, no máximo 0,032, e para grupos pequenos não varia. Esse resultado mostra concretamente por que a avaliação de modelos aplicados a populações heterogêneas não pode se limitar a métricas agregadas de desempenho.
+\textbf{Contribuição metodológica.} Um protocolo de validação por injeção de viés com controle negativo pareado e efeito líquido, que separa o efeito do viés direcionado do efeito genérico de alterar a prevalência de rótulos. O protocolo evidenciou que, sob um viés que leva o DI de um grupo a praticamente zero, a AUC-ROC varia, em média, no máximo 0,032 e, para o grupo Indígena, menos de 0,001. Esse resultado mostra concretamente por que a avaliação de modelos aplicados a populações heterogêneas não pode se limitar a métricas agregadas de desempenho.
 
 % ---------------------------------------------------------------------------
 \section{Limitações}
 
-As limitações, detalhadas na Seção~\ref{sec:res_limitacoes}, podem ser resumidas em cinco pontos:
+As limitações, detalhadas na Seção~\ref{sec:res_limitacoes}, podem ser resumidas em nove pontos:
 \begin{itemize}
     \item o pequeno número de candidatos indígenas no conjunto de teste, que torna suas métricas instáveis;
     \item a auditoria de um único tipo de modelo, que usa o atributo raça/cor diretamente;
     \item a natureza associativa, e não causal, dos valores SHAP;
     \item a dicotomização do desempenho pela mediana;
-    \item a comparabilidade limitada entre edições, decorrente da variação do salário mínimo e da composição dos participantes.
+    \item a comparabilidade limitada entre edições, decorrente da variação do salário mínimo e da composição dos participantes;
+    \item o alvo relativo a cada edição, que expressa a posição do candidato em relação à mediana do ano, e não um patamar absoluto de proficiência;
+    \item a imputação pela moda, que em 2020 atribui um perfil presumido a participantes cuja ausência de resposta provavelmente não é aleatória;
+    \item a seleção de hiperparâmetros na borda de uma grade compacta;
+    \item a ausência de medição do tempo de resposta e do consumo de memória no ambiente de produção.
 \end{itemize}
 
 % ---------------------------------------------------------------------------
@@ -51,15 +55,15 @@ Os resultados abrem as seguintes linhas de continuidade:
 \begin{itemize}
     \item \textbf{Incerteza estatística:} estender os intervalos de confiança, que hoje refletem apenas a variabilidade do conjunto de teste, a um \textit{bootstrap} com retreinamento \cite{efron1993bootstrap}, e ampliar a amostra dos grupos minoritários por sobreamostragem estratificada;
     \item \textbf{Tratamento de não respostas:} substituir a imputação pela moda por uma categoria explícita de ``não resposta'' ao questionário;
-    \item \textbf{Validação em produção:} medir o tempo de resposta no próprio ambiente de implantação;
+    \item \textbf{Validação em produção:} medir o tempo de resposta e o consumo de memória no próprio ambiente de implantação;
     \item \textbf{Viés por variáveis \textit{proxy}:} auditar um modelo treinado \textbf{sem} o atributo raça/cor, para medir quanto da disparidade persiste por meio de variáveis correlacionadas \cite{dwork2012fairness};
     \item \textbf{Mitigação:} integrar técnicas de pré-processamento, como a reponderação de instâncias \cite{kamiran2012data}, e de pós-processamento, como limiares por grupo \cite{hardt2016equality}, e exibir o \textit{trade-off} entre desempenho e equidade na própria interface;
     \item \textbf{Interseccionalidade:} avaliar subgrupos definidos pela combinação de atributos, como raça/cor e renda, nos quais disparidades podem ser maiores que as observadas em cada atributo isolado \cite{buolamwini2018gender};
-    \item \textbf{Generalização:} estender a auditoria a outras famílias de modelos, a novas edições do ENEM e a outras bases educacionais públicas, como o SAEB e o Censo Escolar;
+    \item \textbf{Generalização:} estender a auditoria a outras famílias de modelos, a grades de hiperparâmetros mais amplas, a outros critérios de definição do alvo, a novas edições do ENEM e a outras bases educacionais públicas, como o SAEB e o Censo Escolar;
     \item \textbf{Interface:} avaliar a usabilidade do painel com usuários do público-alvo, como gestores e membros de órgãos de controle, por meio de testes de usabilidade.
 \end{itemize}
 
 % ---------------------------------------------------------------------------
 \section{Considerações Finais}
 
-A adoção de modelos preditivos na gestão educacional é uma tendência, e a regulação brasileira caminha para exigir dos sistemas de alto risco avaliações de impacto algorítmico e mecanismos de explicação \cite{brasil2018lgpd, brasil2023pl2338}. Os resultados deste trabalho indicam que tais exigências são necessárias. Um modelo pode parecer adequado por todas as métricas usuais e, ainda assim, excluir sistematicamente os grupos que mais dependem de políticas educacionais justas. A ferramenta desenvolvida torna essa exclusão visível, mensurável e explicável, e, ao fazê-lo, oferece a gestores, pesquisadores e órgãos de controle um instrumento concreto para que a promessa de decisões orientadas a dados não se converta em desigualdade automatizada.
+A adoção de modelos preditivos na gestão educacional é uma tendência, e a regulação brasileira caminha para exigir dos sistemas de alto risco avaliações de impacto algorítmico e mecanismos de explicação \cite{brasil2018lgpd, brasil2023pl2338}. Os resultados deste trabalho reforçam a pertinência de tais exigências. Um modelo pode parecer adequado por todas as métricas usuais e, ainda assim, excluir sistematicamente os grupos que mais dependem de políticas educacionais justas. A ferramenta desenvolvida torna essa exclusão visível, mensurável e explicável, e, ao fazê-lo, oferece a gestores, pesquisadores e órgãos de controle um instrumento concreto para que a promessa de decisões orientadas a dados não se converta em desigualdade automatizada.

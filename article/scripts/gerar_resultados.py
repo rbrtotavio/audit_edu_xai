@@ -211,28 +211,72 @@ write_tex("tab_di_raca", r"""\begin{table}[htbp]
 # ---------------------------------------------------------------------------
 # Tabela 3 — Amplificação (DI dos rótulos vs DI previsto)
 # ---------------------------------------------------------------------------
+def ci_excludes(lo, hi, value):
+    """True se o IC95% não contém `value` (estimativa estatisticamente robusta)."""
+    return not (pd.isna(lo) or pd.isna(hi)) and (hi < value or lo > value)
+
+
 body = []
-for g in [g for g in RACA_ORDER if g != "1"]:
-    cells = []
-    for y in YEARS:
+for y in YEARS:
+    body.append(rf"\multicolumn{{6}}{{l}}{{\textbf{{ENEM {y}}}}} \\")
+    for g in [g for g in RACA_ORDER if g != "1"]:
         r = raca[(raca.year == y) & (raca.group == g)].iloc[0]
-        cells += [br(r.label_disparate_impact), br(r.disparate_impact), br_signed(r.di_amplification)]
-    body.append(f"{RACA[g]} & " + " & ".join(cells) + r" \\")
+        delta = br_signed(r.di_amplification)
+        if ci_excludes(r.di_amplification_ci_low, r.di_amplification_ci_high, 0.0):
+            delta = rf"\textbf{{{delta}}}"
+        body.append(
+            f"\\quad {RACA[g]} & {br(r.label_disparate_impact)} & "
+            f"{ci(r.label_di_ci_low, r.label_di_ci_high)} & {br(r.disparate_impact)} & {delta} & "
+            f"{ci(r.di_amplification_ci_low, r.di_amplification_ci_high)} \\\\"
+        )
+    if y != YEARS[-1]:
+        body.append(r"\midrule")
 write_tex("tab_amplificacao", r"""\begin{table}[htbp]
 \centering
-\caption{Impacto Disparate dos rótulos reais ($y$) versus das predições ($\hat{y}$) por raça/cor}
+\caption{Impacto Disparate dos rótulos reais ($y$) versus das predições ($\hat{y}$) por raça/cor, com intervalos de confiança de 95\%}
 \label{tab:amplificacao}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{l*{9}{c}}
+\begin{tabular}{lccccc}
 \toprule
- & \multicolumn{3}{c}{\textbf{2019}} & \multicolumn{3}{c}{\textbf{2020}} & \multicolumn{3}{c}{\textbf{2021}} \\
-\cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}
-\textbf{Grupo} & $\mathrm{DI}_y$ & $\mathrm{DI}_{\hat{y}}$ & $\Delta$ & $\mathrm{DI}_y$ & $\mathrm{DI}_{\hat{y}}$ & $\Delta$ & $\mathrm{DI}_y$ & $\mathrm{DI}_{\hat{y}}$ & $\Delta$ \\
+\textbf{Grupo} & $\mathrm{DI}_y$ & \textbf{IC95\%} $\mathrm{DI}_y$ & $\mathrm{DI}_{\hat{y}}$ & $\Delta$ & \textbf{IC95\%} $\Delta$ \\
+\midrule
+""" + "\n".join(body) + r"""
+\bottomrule
+\end{tabular}
+\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Referência: Branca. $\Delta = \mathrm{DI}_{\hat{y}} - \mathrm{DI}_y$ (valores negativos indicam amplificação da disparidade pelo modelo). Em negrito: $\Delta$ cujo IC95\% não inclui zero. IC95\%: percentis 2,5 e 97,5 das mesmas """ + br_int(B_BOOT) + r""" reamostragens \textit{bootstrap} da Tabela~\ref{tab:di_raca}, com o modelo e o grupo de referência fixos. O IC95\% de $\mathrm{DI}_{\hat{y}}$ consta da Tabela~\ref{tab:di_raca}.}
+\end{table}
+""")
+
+# ---------------------------------------------------------------------------
+# Tabela 3b — Amplificação por faixa de renda (Q006), com IC95% de Δ
+# ---------------------------------------------------------------------------
+body = []
+for f in sorted(RENDA):
+    cells = []
+    for y in YEARS:
+        r = renda[(renda.year == y) & (renda.group == f)].iloc[0]
+        if f == r.reference_group:
+            cells += [r"\textit{ref.}", "--"]
+            continue
+        delta = br_signed(r.di_amplification)
+        if ci_excludes(r.di_amplification_ci_low, r.di_amplification_ci_high, 0.0):
+            delta = rf"\textbf{{{delta}}}"
+        cells += [delta, ci(r.di_amplification_ci_low, r.di_amplification_ci_high)]
+    body.append(f"{f} & {RENDA[f]} & " + " & ".join(cells) + r" \\")
+write_tex("tab_amplificacao_renda", r"""\begin{table}[htbp]
+\centering
+\caption{Amplificação ($\Delta = \mathrm{DI}_{\hat{y}} - \mathrm{DI}_y$) por faixa de renda familiar (Q006), com intervalos de confiança de 95\%}
+\label{tab:amplificacao_renda}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llcccccc}
+\toprule
+ & & \multicolumn{2}{c}{\textbf{2019}} & \multicolumn{2}{c}{\textbf{2020}} & \multicolumn{2}{c}{\textbf{2021}} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+\textbf{Faixa} & \textbf{Renda mensal} & $\Delta$ & \textbf{IC95\%} & $\Delta$ & \textbf{IC95\%} & $\Delta$ & \textbf{IC95\%} \\
 \midrule
 """ + "\n".join(body) + r"""
 \bottomrule
 \end{tabular}}
-\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Referência: Branca. $\Delta = \mathrm{DI}_{\hat{y}} - \mathrm{DI}_y$ (valores negativos indicam amplificação da disparidade pelo modelo).}
+\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. SM = salário mínimo vigente no ano. Em negrito: $\Delta$ cujo IC95\% não inclui zero. Por construção, $\mathrm{DI}_{\hat{y}} \leq 1$ (referência: faixa de maior taxa de seleção prevista); nas faixas em que $\mathrm{DI}_y > 1$, um $\Delta$ negativo, ainda que em negrito, é mecânico e reflete a aproximação do DI previsto ao da faixa de referência, e não desvantagem para a faixa. IC95\%: mesmas """ + br_int(B_BOOT) + r""" reamostragens \textit{bootstrap} da Tabela~\ref{tab:di_raca}.}
 \end{table}
 """)
 

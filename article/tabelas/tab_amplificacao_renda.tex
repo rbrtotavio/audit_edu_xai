@@ -1,0 +1,34 @@
+% ARQUIVO GERADO AUTOMATICAMENTE por article/scripts/gerar_resultados.py
+% Fonte: data/outputs/*.parquet — NÃO EDITAR À MÃO.
+\begin{table}[htbp]
+\centering
+\caption{Amplificação ($\Delta = \mathrm{DI}_{\hat{y}} - \mathrm{DI}_y$) por faixa de renda familiar (Q006), com intervalos de confiança de 95\%}
+\label{tab:amplificacao_renda}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llcccccc}
+\toprule
+ & & \multicolumn{2}{c}{\textbf{2019}} & \multicolumn{2}{c}{\textbf{2020}} & \multicolumn{2}{c}{\textbf{2021}} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+\textbf{Faixa} & \textbf{Renda mensal} & $\Delta$ & \textbf{IC95\%} & $\Delta$ & \textbf{IC95\%} & $\Delta$ & \textbf{IC95\%} \\
+\midrule
+A & Nenhuma renda & \textbf{−0,245} & [−0,307; −0,192] & \textbf{−0,215} & [−0,266; −0,170] & \textbf{−0,241} & [−0,296; −0,190] \\
+B & Até 1 SM & \textbf{−0,314} & [−0,365; −0,276] & \textbf{−0,322} & [−0,362; −0,286] & \textbf{−0,305} & [−0,346; −0,272] \\
+C & 1 a 1,5 SM & \textbf{−0,310} & [−0,381; −0,257] & \textbf{−0,178} & [−0,236; −0,127] & \textbf{−0,286} & [−0,342; −0,239] \\
+D & 1,5 a 2 SM & −0,004 & [−0,101; 0,070] & −0,056 & [−0,121; 0,003] & \textbf{−0,120} & [−0,187; −0,062] \\
+E & 2 a 2,5 SM & +0,076 & [−0,020; 0,148] & +0,063 & [−0,022; 0,136] & +0,037 & [−0,049; 0,111] \\
+F & 2,5 a 3 SM & +0,047 & [−0,066; 0,144] & +0,074 & [−0,005; 0,146] & +0,070 & [−0,016; 0,139] \\
+G & 3 a 4 SM & +0,052 & [−0,059; 0,139] & +0,073 & [−0,015; 0,148] & \textbf{+0,136} & [0,050; 0,213] \\
+H & 4 a 5 SM & +0,025 & [−0,105; 0,122] & +0,019 & [−0,074; 0,100] & +0,077 & [−0,014; 0,150] \\
+I & 5 a 6 SM & +0,008 & [−0,123; 0,110] & +0,053 & [−0,052; 0,140] & +0,076 & [−0,026; 0,161] \\
+J & 6 a 7 SM & −0,039 & [−0,179; 0,074] & \textit{ref.} & -- & +0,065 & [−0,048; 0,165] \\
+K & 7 a 8 SM & −0,003 & [−0,148; 0,114] & +0,001 & [−0,111; 0,111] & +0,109 & [−0,013; 0,213] \\
+L & 8 a 9 SM & \textit{ref.} & -- & −0,083 & [−0,203; 0,026] & \textit{ref.} & -- \\
+M & 9 a 10 SM & −0,082 & [−0,239; 0,043] & \textbf{−0,129} & [−0,239; −0,031] & 0,000 & [−0,110; 0,096] \\
+N & 10 a 12 SM & \textbf{−0,121} & [−0,269; −0,005] & −0,093 & [−0,212; 0,014] & −0,075 & [−0,193; 0,029] \\
+O & 12 a 15 SM & −0,101 & [−0,255; 0,016] & −0,070 & [−0,187; 0,044] & −0,055 & [−0,170; 0,058] \\
+P & 15 a 20 SM & \textbf{−0,131} & [−0,287; −0,012] & \textbf{−0,122} & [−0,233; −0,027] & −0,061 & [−0,188; 0,041] \\
+Q & Acima de 20 SM & \textbf{−0,174} & [−0,320; −0,060] & \textbf{−0,156} & [−0,268; −0,061] & \textbf{−0,097} & [−0,208; −0,005] \\
+\bottomrule
+\end{tabular}}
+\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. SM = salário mínimo vigente no ano. Em negrito: $\Delta$ cujo IC95\% não inclui zero. Por construção, $\mathrm{DI}_{\hat{y}} \leq 1$ (referência: faixa de maior taxa de seleção prevista); nas faixas em que $\mathrm{DI}_y > 1$, um $\Delta$ negativo, ainda que em negrito, é mecânico e reflete a aproximação do DI previsto ao da faixa de referência, e não desvantagem para a faixa. IC95\%: mesmas 2.000 reamostragens \textit{bootstrap} da Tabela~\ref{tab:di_raca}.}
+\end{table}

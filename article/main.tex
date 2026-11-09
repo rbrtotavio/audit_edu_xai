@@ -32,8 +32,6 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsthm}
-\usepackage{lipsum}
-\usepackage{blindtext}
 
 % ---
 % Ambiente "quadro" (ABNT: tabelas de texto, com bordas) e sua lista
@@ -137,11 +135,9 @@
 % Controle do espaçamento entre um parágrafo e outro:
 \setlength{\parskip}{0.2cm}  % tente também \onelineskip
 
-% ---
-% compila o indice
-% ---
-\makeindex
-% ---
+% Folga extra de justificação (evita linhas que excedem a margem)
+\setlength{\emergencystretch}{2em}
+
 
 % ----
 % Início do documento
@@ -177,10 +173,11 @@
 
 %\begin{minipage}[t]{1\textwidth}
 	\begin{figure}[ht]
-		\includegraphics[height=3cm]{figuras/logo_ufrpe_horizontal.png}
-		\hspace{4.5cm}
-    	\includegraphics[height=2.5cm]{figuras/logo_bsi.pdf}
-	\end{figure}    
+		\noindent
+		\includegraphics[height=3cm,width=0.45\textwidth,keepaspectratio]{figuras/logo_ufrpe_horizontal.png}%
+		\hfill
+		\includegraphics[height=2.5cm,width=0.45\textwidth,keepaspectratio]{figuras/logo_bsi.pdf}%
+	\end{figure}
 %\end{minipage}
 
 % ---
@@ -276,12 +273,5 @@
 % ----------------------------------------------------------
 \bibliography{referencias.bib}
 
-
-%---------------------------------------------------------------------
-% INDICE REMISSIVO
-%---------------------------------------------------------------------
-\phantompart
-\printindex
-%---------------------------------------------------------------------
 
 \end{document}

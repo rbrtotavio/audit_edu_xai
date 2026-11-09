@@ -2,21 +2,33 @@
 % Fonte: data/outputs/*.parquet — NÃO EDITAR À MÃO.
 \begin{table}[htbp]
 \centering
-\caption{Impacto Disparate dos rótulos reais ($y$) versus das predições ($\hat{y}$) por raça/cor}
+\caption{Impacto Disparate dos rótulos reais ($y$) versus das predições ($\hat{y}$) por raça/cor, com intervalos de confiança de 95\%}
 \label{tab:amplificacao}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{l*{9}{c}}
+\begin{tabular}{lccccc}
 \toprule
- & \multicolumn{3}{c}{\textbf{2019}} & \multicolumn{3}{c}{\textbf{2020}} & \multicolumn{3}{c}{\textbf{2021}} \\
-\cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}
-\textbf{Grupo} & $\mathrm{DI}_y$ & $\mathrm{DI}_{\hat{y}}$ & $\Delta$ & $\mathrm{DI}_y$ & $\mathrm{DI}_{\hat{y}}$ & $\Delta$ & $\mathrm{DI}_y$ & $\mathrm{DI}_{\hat{y}}$ & $\Delta$ \\
+\textbf{Grupo} & $\mathrm{DI}_y$ & \textbf{IC95\%} $\mathrm{DI}_y$ & $\mathrm{DI}_{\hat{y}}$ & $\Delta$ & \textbf{IC95\%} $\Delta$ \\
 \midrule
-Preta & 0,637 & 0,426 & −0,211 & 0,626 & 0,365 & −0,260 & 0,595 & 0,337 & −0,258 \\
-Parda & 0,678 & 0,495 & −0,183 & 0,674 & 0,462 & −0,212 & 0,662 & 0,423 & −0,240 \\
-Amarela & 0,749 & 0,609 & −0,140 & 0,809 & 0,498 & −0,311 & 0,838 & 0,663 & −0,175 \\
-Indígena & 0,581 & 0,252 & −0,329 & 0,389 & 0,169 & −0,220 & 0,311 & 0,417 & +0,106 \\
-Não declarada & 0,891 & 0,620 & −0,271 & 0,827 & 0,633 & −0,194 & 0,798 & 0,629 & −0,169 \\
+\multicolumn{6}{l}{\textbf{ENEM 2019}} \\
+\quad Preta & 0,637 & [0,590; 0,684] & 0,426 & \textbf{−0,211} & [−0,264; −0,160] \\
+\quad Parda & 0,678 & [0,650; 0,707] & 0,495 & \textbf{−0,183} & [−0,214; −0,153] \\
+\quad Amarela & 0,749 & [0,644; 0,852] & 0,609 & \textbf{−0,140} & [−0,253; −0,032] \\
+\quad Indígena & 0,581 & [0,368; 0,802] & 0,252 & \textbf{−0,329} & [−0,570; −0,100] \\
+\quad Não declarada & 0,891 & [0,775; 1,002] & 0,620 & \textbf{−0,271} & [−0,393; −0,145] \\
+\midrule
+\multicolumn{6}{l}{\textbf{ENEM 2020}} \\
+\quad Preta & 0,626 & [0,578; 0,670] & 0,365 & \textbf{−0,260} & [−0,309; −0,209] \\
+\quad Parda & 0,674 & [0,645; 0,704] & 0,462 & \textbf{−0,212} & [−0,242; −0,184] \\
+\quad Amarela & 0,809 & [0,702; 0,913] & 0,498 & \textbf{−0,311} & [−0,424; −0,197] \\
+\quad Indígena & 0,389 & [0,203; 0,588] & 0,169 & −0,220 & [−0,443; 0,008] \\
+\quad Não declarada & 0,827 & [0,712; 0,948] & 0,633 & \textbf{−0,194} & [−0,314; −0,068] \\
+\midrule
+\multicolumn{6}{l}{\textbf{ENEM 2021}} \\
+\quad Preta & 0,595 & [0,547; 0,643] & 0,337 & \textbf{−0,258} & [−0,310; −0,203] \\
+\quad Parda & 0,662 & [0,632; 0,692] & 0,423 & \textbf{−0,240} & [−0,270; −0,208] \\
+\quad Amarela & 0,838 & [0,723; 0,945] & 0,663 & \textbf{−0,175} & [−0,277; −0,066] \\
+\quad Indígena & 0,311 & [0,136; 0,503] & 0,417 & +0,106 & [−0,070; 0,296] \\
+\quad Não declarada & 0,798 & [0,675; 0,910] & 0,629 & \textbf{−0,169} & [−0,294; −0,042] \\
 \bottomrule
-\end{tabular}}
-\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Referência: Branca. $\Delta = \mathrm{DI}_{\hat{y}} - \mathrm{DI}_y$ (valores negativos indicam amplificação da disparidade pelo modelo).}
+\end{tabular}
+\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Referência: Branca. $\Delta = \mathrm{DI}_{\hat{y}} - \mathrm{DI}_y$ (valores negativos indicam amplificação da disparidade pelo modelo). Em negrito: $\Delta$ cujo IC95\% não inclui zero. IC95\%: percentis 2,5 e 97,5 das mesmas 2.000 reamostragens \textit{bootstrap} da Tabela~\ref{tab:di_raca}, com o modelo e o grupo de referência fixos. O IC95\% de $\mathrm{DI}_{\hat{y}}$ consta da Tabela~\ref{tab:di_raca}.}
 \end{table}
