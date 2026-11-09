@@ -508,8 +508,9 @@ with tab_xai:
                          help="Diferença média de SHAP entre quem tem e quem não tem computador (log-odds).")
                 c.caption(f"{pct(r['prevalence'], 0)} sem computador")
             st.caption("O peso por candidato cresce enquanto a proporção de candidatos sem computador cai, "
-                       "o que descarta um efeito de composição. A coincidência com a pandemia é **associativa**, "
-                       "não causal.")
+                       "o que descarta um efeito de prevalência (o aumento não vem de haver mais candidatos "
+                       "sem computador), mas não exclui mudanças no perfil dos participantes. "
+                       "A coincidência com a pandemia é **associativa**, não causal.")
         if st.toggle("Mostrar gráfico detalhado (beeswarm SHAP)",
                      help="Cada ponto é um candidato; a cor indica se ele possui o atributo. "
                           "Renderizado uma vez por edição."):
