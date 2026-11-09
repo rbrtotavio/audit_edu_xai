@@ -392,7 +392,7 @@ write_tex("tab_app_benchmark", r"""\begin{table}[htbp]
 """ + "\n".join(body) + r"""
 \bottomrule
 \end{tabular}}
-\fonte{Elaborado pelo autor a partir de \texttt{app\_benchmark.parquet}. """ + f"{n_ok} de {n_all}" + r""" execuções abaixo de 2~s. Ambiente local: """ + f"{bench.platform.iloc[0].split('-')[0]} {bench.platform.iloc[0].split('-')[1]}, Python {bench.python.iloc[0]}, Streamlit {bench.streamlit.iloc[0]}" + r""". A restrição a 2 núcleos aproxima, mas não reproduz, o ambiente de 2 vCPUs do Hugging Face Spaces.}
+\fonte{Elaborado pelo autor a partir de \texttt{app\_benchmark.parquet}. """ + f"{n_ok} de {n_all}" + r""" execuções abaixo de 2~s. Ambiente local: """ + f"{bench.platform.iloc[0].split('-')[0]} {bench.platform.iloc[0].split('-')[1]}, Python {bench.python.iloc[0]}, Streamlit {bench.streamlit.iloc[0]}" + r""". A restrição a 2 núcleos aproxima ambientes gratuitos de nuvem com poucos núcleos; o desempenho em produção não foi medido.}
 \end{table}
 """)
 

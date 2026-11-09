@@ -148,7 +148,7 @@ O contrato de dados de \textbf{entrada}, isto é, as colunas extraídas dos micr
 
 As decisões de engenharia voltadas ao desempenho atuam em três níveis.
 
-\textbf{Ingestão.} A leitura em blocos e a seleção antecipada de colunas limitam o uso de memória durante o processamento de arquivos com até 2,3~GB. A conversão das notas para \texttt{float32}, das variáveis-alvo para \texttt{uint8} e das categóricas para o tipo \texttt{category} reduz o volume em memória.
+\textbf{Ingestão.} A leitura em blocos e a seleção antecipada de colunas limitam o uso de memória durante o processamento de arquivos que ocupam entre 1,5 e 2,4~GB. A conversão das notas para \texttt{float32}, das variáveis-alvo para \texttt{uint8} e das categóricas para o tipo \texttt{category} reduz o volume em memória.
 
 \textbf{Armazenamento.} O formato colunar Apache Parquet \cite{parquet2026} armazena os dados comprimidos e permite ler apenas as colunas necessárias. Os artefatos consumidos pela interface ocupam menos de 1~MB por edição (Tabela~\ref{tab:app_benchmark}), o que permite incluí-los diretamente na imagem de implantação.
 
@@ -258,7 +258,7 @@ Imagem base & \texttt{python:3.12-slim}, nos dois estágios. \\ \hline
 Estágio \textit{builder} & Cria \texttt{/opt/venv} e instala \texttt{requirements.txt}, que contém somente as dependências da interface, com versões fixadas idênticas às validadas localmente. \\ \hline
 Estágio \textit{runner} & Copia \texttt{/opt/venv}, \texttt{app.py} e \texttt{data/outputs/}; executa como usuário não privilegiado (UID 1000), boa prática de segurança exigida por diversas plataformas de contêiner. \\ \hline
 Configuração & Porta 7860; servidor Streamlit \textit{headless}; limite de duas \textit{threads} numéricas, compatível com ambientes de poucos núcleos; diretórios de cache graváveis para as bibliotecas de visualização. \\ \hline
-Contexto de \textit{build} & Arquivo \texttt{.dockerignore} em modo de lista de permissão, que exclui os microdados brutos (aproximadamente 5,7~GB), modelos e o texto da monografia. \\ \hline
+Contexto de \textit{build} & Arquivo \texttt{.dockerignore} em modo de lista de permissão, que exclui os microdados brutos (aproximadamente 5,9~GB), modelos e o texto da monografia. \\ \hline
 Monitoramento & Verificação de saúde (\textit{health check}) periódica no \textit{endpoint} nativo do Streamlit. \\ \hline
 \end{tabular}
 \fonte{Elaborado pelo autor.}

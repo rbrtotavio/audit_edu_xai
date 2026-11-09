@@ -56,7 +56,7 @@ Do arquivo de participantes de cada edição são extraídas exclusivamente as c
 
 \subsection{Ingestão em Lote}
 
-Os arquivos de participantes ocupam entre 1,5~GB e 2,3~GB por edição. Para respeitar o limite de 8~GB de memória do ambiente de execução, a leitura é realizada em blocos (\textit{chunks}) de 100.000 linhas, restrita às colunas do contrato de dados. Em cada bloco, as notas são convertidas para o tipo \texttt{float32}, e o resultado consolidado é persistido no formato colunar comprimido Apache Parquet, que reduz substancialmente o custo de leitura nas etapas subsequentes.
+Os arquivos de participantes ocupam entre 1,5 e 2,4~GB por edição. Para respeitar o limite de 8~GB de memória do ambiente de execução, a leitura é realizada em blocos (\textit{chunks}) de 100.000 linhas, restrita às colunas do contrato de dados. Em cada bloco, as notas são convertidas para o tipo \texttt{float32}, e o resultado consolidado é persistido no formato colunar comprimido Apache Parquet, que reduz substancialmente o custo de leitura nas etapas subsequentes.
 
 \subsection{Filtragem de Absenteísmo}
 

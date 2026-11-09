@@ -11,7 +11,7 @@ A Tabela~\ref{tab:desempenho} apresenta o desempenho do classificador no conjunt
 
 \input{tabelas/tab_desempenho}
 
-O desempenho é moderado, o que é esperado para um modelo que dispõe apenas de seis variáveis socioeconômicas e nenhuma informação sobre a trajetória escolar do candidato. O resultado está em linha com a literatura: \citeonline{luz2026uso} reportam F1 de 0,76 com um conjunto mais amplo de variáveis. Ressalta-se que o classificador é o \textbf{objeto} da auditoria, e não o produto do trabalho. Um modelo com AUC próxima de 0,75 seria considerado razoável em muitas aplicações práticas, e é justamente esse tipo de modelo, aparentemente aceitável, que a ferramenta deve ser capaz de examinar.
+O desempenho é moderado, o que é esperado para um modelo que dispõe apenas de seis variáveis socioeconômicas e nenhuma informação sobre a trajetória escolar do candidato. O resultado (F1 entre 0,674 e 0,677) é inferior, mas da mesma ordem de grandeza, ao relatado por \citeonline{luz2025uso}, cujo melhor modelo obteve F1 de 0,758 e ROC-AUC de 0,816 com dados do ENEM 2023. A comparação exige duas ressalvas: aquele estudo emprega um conjunto mais amplo de variáveis, e sua classe positiva é o desempenho \textbf{abaixo} da média geral, enquanto aqui a classe positiva é a NMG igual ou superior à mediana da edição. Ressalta-se que o classificador é o \textbf{objeto} da auditoria, e não o produto do trabalho. Um modelo com AUC próxima de 0,75 seria considerado razoável em muitas aplicações práticas, e é justamente esse tipo de modelo, aparentemente aceitável, que a ferramenta deve ser capaz de examinar.
 
 % ---------------------------------------------------------------------------
 \section{Auditoria de Equidade por Raça/Cor}
@@ -111,7 +111,7 @@ Uma objeção técnica a essa comparação é que a importância média $\overli
 
 \input{tabelas/tab_shap_q024}
 
-Segundo, \textbf{a renda familiar mais baixa} (até 1 salário mínimo) mantém-se entre os três atributos mais relevantes em todas as edições, ao lado das demais faixas inferiores de renda e da escolaridade dos pais, em consonância com a literatura sobre o peso do capital econômico e cultural familiar no desempenho \cite{marques2023desigualdades}.
+Segundo, \textbf{a renda familiar mais baixa} (até 1 salário mínimo) mantém-se entre os três atributos mais relevantes em todas as edições, ao lado das demais faixas inferiores de renda e da escolaridade dos pais, em consonância com a literatura sobre o peso do capital econômico e cultural familiar no desempenho \cite{souza2025desigualdades}.
 
 Terceiro, \textbf{a raça/cor branca figura entre os quatro atributos mais importantes em todas as edições} (4.ª posição em 2019 e 2021; 3.ª em 2020). Mesmo dispondo de renda, escolaridade dos pais e acesso a tecnologia, o modelo utiliza diretamente a raça/cor como sinal preditivo. Essa constatação, que as métricas de equidade sozinhas não permitiriam estabelecer, ilustra o valor da camada de explicabilidade para localizar a \textbf{origem} das disparidades.
 
@@ -143,7 +143,7 @@ No grupo Indígena, o controle negativo praticamente não altera o DI (variaçõ
 
 \subsection{Baixa sensibilidade das métricas convencionais (H3)}
 
-O resultado mais relevante do experimento é o contraste entre o comportamento do DI e o da AUC-ROC. Com 50\% de injeção no grupo Pardo, o DI despenca para valores entre 0,005 e 0,008, enquanto \textbf{a AUC-ROC recua apenas entre 0,027 e 0,032}, permanecendo acima de 0,71 nas três edições. Para o grupo Indígena, a situação é ainda mais extrema: \textbf{a AUC-ROC não se altera na terceira casa decimal}, embora o DI do grupo recue entre 53\% e 84\% em relação ao valor original. Como o grupo representa cerca de 0,5\% do conjunto de teste, um dano concentrado sobre ele tem efeito praticamente nulo sobre métricas agregadas de desempenho.
+O resultado mais relevante do experimento é o contraste entre o comportamento do DI e o da AUC-ROC. Com 50\% de injeção no grupo Pardo, o DI despenca para valores entre 0,005 e 0,008, enquanto \textbf{a AUC-ROC recua, em média, apenas entre 0,027 e 0,032}, permanecendo acima de 0,71 nas três edições. Para o grupo Indígena, a situação é ainda mais extrema: \textbf{a AUC-ROC não se altera na terceira casa decimal}, embora o DI do grupo recue entre 53\% e 84\% em relação ao valor original. Como o grupo representa cerca de 0,5\% do conjunto de teste, um dano concentrado sobre ele tem efeito praticamente nulo sobre métricas agregadas de desempenho.
 
 A AUC-ROC não fica, portanto, rigorosamente constante. O ponto é a \textbf{desproporção}: uma deterioração extrema da equidade corresponde a uma variação pequena, ou nula, da métrica agregada. Em termos práticos, um processo de validação baseado apenas em métricas convencionais poderia aprovar um modelo que exclui sistematicamente candidatos pardos ou indígenas. O artefato, em contrapartida, detecta o viés por três vias independentes:
 \begin{itemize}
