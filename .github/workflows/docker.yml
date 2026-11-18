@@ -35,6 +35,9 @@ jobs:
         run: |
           docker image inspect audit-edu-xai:ci --format 'Tamanho: {{.Size}} bytes'
 
+      # Limites herdados do planejamento inicial (Hugging Face Spaces, CPU Basic). O deploy
+      # público hoje é no Streamlit Community Cloud; aqui os limites só validam a imagem
+      # (artefato de portabilidade) num ambiente restrito a 2 CPUs.
       - name: Sobe o contêiner com o orçamento do alvo (2 CPUs, 16 GB)
         run: docker run -d --name app --cpus=2 --memory=16g -p 7860:7860 audit-edu-xai:ci
 

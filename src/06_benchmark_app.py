@@ -5,20 +5,25 @@ Executa o script do Streamlit em modo headless (streamlit.testing.AppTest) para 
 combinação edição × atributo protegido:
   - cold: cache do Streamlit limpo antes da execução (inclui leitura dos Parquets);
   - warm: reexecuções com os dados já em cache (interação típica do usuário).
-O tempo medido é o de execução completa do script no servidor, incluindo a
-renderização do summary plot SHAP e dos gráficos Plotly.
+O tempo medido é o de execução completa do script no servidor na configuração
+padrão da página (inclui os gráficos Plotly). O summary plot SHAP (beeswarm) é
+exibido sob demanda e fica FORA da medição: sua primeira renderização, acionada
+pelo usuário, ocorre uma única vez por edição e depois é reutilizada do cache.
 
 Modos de CPU (coluna `cpu_limit`):
   python src/06_benchmark_app.py            -> cpu_limit = "all" (todos os núcleos)
-  python src/06_benchmark_app.py --cpus 2   -> cpu_limit = "2": simula o alvo de 2 vCPUs
+  python src/06_benchmark_app.py --cpus 2   -> cpu_limit = "2": aproxima um ambiente restrito a 2 núcleos
     * a afinidade do PROCESSO é restrita aos núcleos lógicos 0 e 1 via Win32
       SetProcessAffinityMask (ctypes; psutil não está no venv). O AppTest executa o
       script do app no mesmo processo, então a restrição vale para ele. Em Linux usa
       os.sched_setaffinity;
     * OMP_NUM_THREADS (e OPENBLAS/MKL_NUM_THREADS) = 2 são definidos ANTES de importar
       pandas/numpy/streamlit.
-    Observação: é uma aproximação local do hardware de destino (mesma CPU física, sem
-    a contenção e a virtualização do Hugging Face Spaces).
+    Observação: é uma aproximação local de um ambiente de nuvem com poucos núcleos
+    (mesma CPU física, sem a virtualização e a contenção de recursos de uma plataforma
+    compartilhada). A implantação pública (Streamlit Community Cloud,
+    https://auditeduxai.streamlit.app/) não divulga a CPU alocada; o tempo de resposta
+    em produção não é medido por este script.
 
 O script ACUMULA as configurações: as linhas existentes de outros `cpu_limit` em
 app_benchmark.parquet são preservadas e apenas as da configuração atual são substituídas.

@@ -1,7 +1,11 @@
 # syntax=docker/dockerfile:1
 # =============================================================================
 # AuditEdu-XAI — imagem da CAMADA ONLINE (dashboard Streamlit)
-# Alvo: Hugging Face Spaces (SDK Docker, CPU Basic: 2 vCPUs / 16 GB RAM, porta 7860)
+# Artefato de PORTABILIDADE, validado em CI (.github/workflows/docker.yml): roda em
+# qualquer infraestrutura de contêineres. O deploy público NÃO usa esta imagem: é feito
+# no Streamlit Community Cloud (https://auditeduxai.streamlit.app/), direto do repositório.
+# A porta 7860 é herança do planejamento inicial (Hugging Face Spaces), mantida por
+# compatibilidade; é configurável via STREAMLIT_SERVER_PORT.
 #
 # A imagem contém APENAS o app.py e os Parquets pré-calculados de data/outputs/.
 # Nenhum modelo é treinado e nenhum SHAP é calculado em tempo de requisição:
@@ -39,15 +43,17 @@ ENV PATH="/opt/venv/bin:${PATH}" \
     # Diretórios graváveis por usuário não-root (matplotlib e numba/SHAP)
     MPLCONFIGDIR=/tmp/matplotlib \
     NUMBA_CACHE_DIR=/tmp/numba \
-    # Limita threads ao orçamento de 2 vCPUs do CPU Basic
+    # Limita as threads numéricas a 2, compatível com ambientes de poucos núcleos
     OMP_NUM_THREADS=2 \
-    # Configuração do Streamlit para o Spaces
+    # Servidor Streamlit headless; porta 7860 mantida do planejamento inicial
+    # (Hugging Face Spaces) por compatibilidade
     STREAMLIT_SERVER_PORT=7860 \
     STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
     STREAMLIT_SERVER_HEADLESS=true \
     STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
-# O Hugging Face Spaces executa o contêiner com UID 1000
+# Usuário não privilegiado (UID 1000): boa prática de segurança exigida por diversas
+# plataformas de contêiner
 RUN useradd --create-home --uid 1000 user
 
 COPY --from=builder /opt/venv /opt/venv
