@@ -161,7 +161,7 @@ write_tex("tab_desempenho", r"""\begin{table}[htbp]
 """ + "\n".join(rows) + r"""
 \bottomrule
 \end{tabular}}
-\fonte{Elaborado pelo autor a partir de \texttt{model\_metrics\_\{ano\}.parquet}.}
+\fonte{\elaboradopor{} a partir de \texttt{model\_metrics\_\{ano\}.parquet}.}
 \end{table}
 """)
 
@@ -204,7 +204,7 @@ write_tex("tab_di_raca", r"""\begin{table}[htbp]
 """ + "\n".join(body) + r"""
 \bottomrule
 \end{tabular}}
-\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Grupo de referência: maior taxa de seleção. IC95\%: percentis 2,5 e 97,5 de """ + br_int(B_BOOT) + r""" reamostragens \textit{bootstrap} do conjunto de teste, com o modelo fixo. A FPR por grupo é apresentada na Figura~\ref{fig:tpr_fpr}.}
+\fonte{\elaboradopor{} a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Grupo de referência: maior taxa de seleção. IC95\%: percentis 2,5 e 97,5 de """ + br_int(B_BOOT) + r""" reamostragens \textit{bootstrap} do conjunto de teste, com o modelo fixo. A FPR por grupo é apresentada na Figura~\ref{fig:tpr_fpr}.}
 \end{table}
 """)
 
@@ -242,7 +242,7 @@ write_tex("tab_amplificacao", r"""\begin{table}[htbp]
 """ + "\n".join(body) + r"""
 \bottomrule
 \end{tabular}
-\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Referência: Branca. $\Delta = \mathrm{DI}_{\hat{y}} - \mathrm{DI}_y$ (valores negativos indicam amplificação da disparidade pelo modelo). Em negrito: $\Delta$ cujo IC95\% não inclui zero. IC95\%: percentis 2,5 e 97,5 das mesmas """ + br_int(B_BOOT) + r""" reamostragens \textit{bootstrap} da Tabela~\ref{tab:di_raca}, com o modelo e o grupo de referência fixos. O IC95\% de $\mathrm{DI}_{\hat{y}}$ consta da Tabela~\ref{tab:di_raca}.}
+\fonte{\elaboradopor{} a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. Referência: Branca. $\Delta = \mathrm{DI}_{\hat{y}} - \mathrm{DI}_y$ (valores negativos indicam amplificação da disparidade pelo modelo). Em negrito: $\Delta$ cujo IC95\% não inclui zero. IC95\%: percentis 2,5 e 97,5 das mesmas """ + br_int(B_BOOT) + r""" reamostragens \textit{bootstrap} da Tabela~\ref{tab:di_raca}, com o modelo e o grupo de referência fixos. O IC95\% de $\mathrm{DI}_{\hat{y}}$ consta da Tabela~\ref{tab:di_raca}.}
 \end{table}
 """)
 
@@ -276,7 +276,7 @@ write_tex("tab_amplificacao_renda", r"""\begin{table}[htbp]
 """ + "\n".join(body) + r"""
 \bottomrule
 \end{tabular}}
-\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. SM = salário mínimo vigente no ano. Em negrito: $\Delta$ cujo IC95\% não inclui zero. Por construção, $\mathrm{DI}_{\hat{y}} \leq 1$ (referência: faixa de maior taxa de seleção prevista); nas faixas em que $\mathrm{DI}_y > 1$, um $\Delta$ negativo, ainda que em negrito, é mecânico e reflete a aproximação do DI previsto ao da faixa de referência, e não desvantagem para a faixa. IC95\%: mesmas """ + br_int(B_BOOT) + r""" reamostragens \textit{bootstrap} da Tabela~\ref{tab:di_raca}.}
+\fonte{\elaboradopor{} a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. SM = salário mínimo vigente no ano. Em negrito: $\Delta$ cujo IC95\% não inclui zero. Por construção, $\mathrm{DI}_{\hat{y}} \leq 1$ (referência: faixa de maior taxa de seleção prevista); nas faixas em que $\mathrm{DI}_y > 1$, um $\Delta$ negativo, ainda que em negrito, é mecânico e reflete a aproximação do DI previsto ao da faixa de referência, e não desvantagem para a faixa. IC95\%: mesmas """ + br_int(B_BOOT) + r""" reamostragens \textit{bootstrap} da Tabela~\ref{tab:di_raca}.}
 \end{table}
 """)
 
@@ -308,7 +308,7 @@ write_tex("tab_di_renda", r"""\begin{table}[htbp]
 """ + "\n".join(body) + r"""
 \bottomrule
 \end{tabular}
-\fonte{Elaborado pelo autor a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. SM = salário mínimo vigente no ano. Em negrito: DI $<$ 0,8. Faixa de referência (maior taxa de seleção) --- """ + refs + r""".}
+\fonte{\elaboradopor{} a partir de \texttt{fairness\_metrics\_\{ano\}.parquet}. SM = salário mínimo vigente no ano. Em negrito: DI $<$ 0,8. Faixa de referência (maior taxa de seleção) --- """ + refs + r""".}
 \end{table}
 """)
 
@@ -337,7 +337,7 @@ write_tex("tab_shap", r"""\begin{table}[htbp]
 """ + "\n".join(body) + r"""
 \bottomrule
 \end{tabular}}
-\fonte{Elaborado pelo autor a partir de \texttt{shap\_values\_\{ano\}.parquet}.}
+\fonte{\elaboradopor{} a partir de \texttt{shap\_values\_\{ano\}.parquet}.}
 \end{table}
 """)
 
@@ -372,7 +372,7 @@ write_tex("tab_injecao", r"""\begin{table}[htbp]
 """ + "\n".join(body) + r"""
 \bottomrule
 \end{tabular}}
-\fonte{Elaborado pelo autor a partir de \texttt{bias\_injection\_summary.parquet}. Média $\pm$ desvio-padrão de 5 repetições. AUC do cenário de injeção.}
+\fonte{\elaboradopor{} a partir de \texttt{bias\_injection\_summary.parquet}. Média $\pm$ desvio-padrão de 5 repetições. AUC do cenário de injeção.}
 \end{table}
 """)
 
@@ -402,7 +402,7 @@ write_tex("tab_injecao_efeito", r"""\begin{table}[htbp]
 """ + "\n".join(body) + r"""
 \bottomrule
 \end{tabular}}
-\fonte{Elaborado pelo autor a partir de \texttt{bias\_injection\_summary.parquet}. $\bar{\phi}_{\text{raça}}$: valor SHAP médio da variável indicadora do grupo-alvo entre os membros do grupo.}
+\fonte{\elaboradopor{} a partir de \texttt{bias\_injection\_summary.parquet}. $\bar{\phi}_{\text{raça}}$: valor SHAP médio da variável indicadora do grupo-alvo entre os membros do grupo.}
 \end{table}
 """)
 
@@ -436,7 +436,7 @@ write_tex("tab_app_benchmark", r"""\begin{table}[htbp]
 """ + "\n".join(body) + r"""
 \bottomrule
 \end{tabular}}
-\fonte{Elaborado pelo autor a partir de \texttt{app\_benchmark.parquet}. """ + f"{n_ok} de {n_all}" + r""" execuções abaixo de 2~s. Ambiente local: """ + f"{bench.platform.iloc[0].split('-')[0]} {bench.platform.iloc[0].split('-')[1]}, Python {bench.python.iloc[0]}, Streamlit {bench.streamlit.iloc[0]}" + r""". A restrição a 2 núcleos aproxima ambientes gratuitos de nuvem com poucos núcleos; o desempenho em produção não foi medido.}
+\fonte{\elaboradopor{} a partir de \texttt{app\_benchmark.parquet}. """ + f"{n_ok} de {n_all}" + r""" execuções abaixo de 2~s. Ambiente local: """ + f"{bench.platform.iloc[0].split('-')[0]} {bench.platform.iloc[0].split('-')[1]}, Python {bench.python.iloc[0]}, Streamlit {bench.streamlit.iloc[0]}" + r""". A restrição a 2 núcleos aproxima ambientes gratuitos de nuvem com poucos núcleos; o desempenho em produção não foi medido.}
 \end{table}
 """)
 
@@ -460,7 +460,7 @@ write_tex("tab_shap_q024", r"""\begin{table}[htbp]
 """ + "\n".join(body) + r"""
 \bottomrule
 \end{tabular}
-\fonte{Elaborado pelo autor a partir de \texttt{shap\_feature\_summary\_\{ano\}.parquet}. Prevalência: proporção de candidatos sem computador no teste. Diferença: $\bar{\phi}$ (com comp.) $-$ $\bar{\phi}$ (sem comp.), em log-odds.}
+\fonte{\elaboradopor{} a partir de \texttt{shap\_feature\_summary\_\{ano\}.parquet}. Prevalência: proporção de candidatos sem computador no teste. Diferença: $\bar{\phi}$ (com comp.) $-$ $\bar{\phi}$ (sem comp.), em log-odds.}
 \end{table}
 """)
 
@@ -493,7 +493,7 @@ write_tex("tab_qualidade_dados", r"""\begin{table}[htbp]
 """ + "\n".join(body) + r"""
 \bottomrule
 \end{tabular}}
-\fonte{Elaborado pelo autor a partir de \texttt{data\_quality.parquet}. Questionário nulo: registros com Q001, Q002, Q006, Q024 e Q025 simultaneamente ausentes. Teste / base: fração que o conjunto de teste (10.000) representa na população usada para calcular a moda. Menor margem: diferença, em número de registros, entre a moda e a segunda categoria mais frequente na coluna mais apertada. Moda robusta: a margem supera 10.000 em todas as colunas, de modo que o teste não poderia alterar a moda.}
+\fonte{\elaboradopor{} a partir de \texttt{data\_quality.parquet}. Questionário nulo: registros com Q001, Q002, Q006, Q024 e Q025 simultaneamente ausentes. Teste / base: fração que o conjunto de teste (10.000) representa na população usada para calcular a moda. Menor margem: diferença, em número de registros, entre a moda e a segunda categoria mais frequente na coluna mais apertada. Moda robusta: a margem supera 10.000 em todas as colunas, de modo que o teste não poderia alterar a moda.}
 \end{table}
 """)
 

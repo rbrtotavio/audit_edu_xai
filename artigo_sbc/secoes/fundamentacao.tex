@@ -1,0 +1,59 @@
+\section{Fundamentação Teórica e Trabalhos Relacionados}
+\label{sec:fundamentacao}
+
+\subsection{Justiça Algorítmica}
+\label{sec:fund_fairness}
+
+A Justiça Algorítmica estuda como sistemas automatizados podem produzir resultados sistematicamente desfavoráveis a grupos definidos por atributos sensíveis, como raça, gênero ou renda, e como medir e mitigar esse efeito \cite{barocas2023fairness}. O viés pode ser \textbf{histórico} (dados que refletem desigualdades preexistentes), \textbf{de representação} (grupos minoritários sub-representados) ou \textbf{de rótulo} (variável-alvo produzida por processos discriminatórios). Remover o atributo sensível do modelo é insuficiente, pois variáveis correlacionadas (\textit{proxies}) permitem reconstruí-lo \cite{dwork2012fairness}; por isso, a auditoria precisa medir os \textbf{resultados} do modelo por grupo.
+
+Três critérios de justiça de grupo são usados neste trabalho \cite{barocas2023fairness}. A \textbf{Paridade Demográfica} exige que a probabilidade de predição positiva não dependa do grupo. Sua forma de razão é o \textbf{Impacto Disparate} (DI, do inglês \textit{Disparate Impact}), a razão entre a taxa de seleção de um grupo e a de um grupo de referência. A métrica tem origem no direito antidiscriminatório norte-americano: as diretrizes da \textit{Equal Employment Opportunity Commission} (EEOC) estabelecem a \textbf{regra dos quatro quintos}, segundo a qual uma taxa de seleção inferior a 80\% da do grupo mais favorecido constitui evidência de impacto adverso \cite{eeoc1978uniform}. Em \cite{feldman2015certifying}, essa regra foi formalizada no aprendizado de máquina, considerando discriminatório um classificador com $\mathrm{DI} < 0{,}8$. Como a Paridade Demográfica ignora os rótulos reais, \cite{hardt2016equality} propuseram a \textbf{Igualdade de Oportunidades} (\textit{Equal Opportunity}), que exige taxas de verdadeiros positivos (TPR) iguais entre os grupos, e sua versão mais forte, as \textbf{chances equalizadas} (\textit{Equalized Odds}), que exige também a igualdade das taxas de falsos positivos (FPR). As definições formais adotadas estão na Seção~\ref{sec:metricas}.
+
+Os critérios não podem, em geral, ser satisfeitos simultaneamente: quando as taxas-base diferem entre os grupos, é impossível equalizar ao mesmo tempo a calibração e as taxas de erro, exceto em casos degenerados \cite{kleinberg2017inherent, chouldechova2017fair}. A escolha das métricas é, portanto, uma decisão normativa, e reportar critérios complementares, como o DI e a TPR, oferece um diagnóstico mais completo.
+
+\subsection{Explicabilidade com Valores de Shapley}
+\label{sec:fund_xai}
+
+Os valores de Shapley provêm da teoria dos jogos cooperativos e repartem o ganho de uma coalizão entre seus jogadores \cite{shapley1953value}. Na formulação SHAP (\textit{SHapley Additive exPlanations}), os atributos são os jogadores e a predição é o ganho \cite{lundberg2017unified}. Para um modelo $f$ e um conjunto $F$ de $M$ atributos, a contribuição do atributo $i$ para a predição da instância $x$ é
+\begin{equation}
+\phi_i(f, x) = \sum_{S \subseteq F \setminus \{i\}} \frac{|S|!\,(M - |S| - 1)!}{M!} \left[ f_x(S \cup \{i\}) - f_x(S) \right],
+\label{eq:shapley}
+\end{equation}
+em que $f_x(S)$ é a saída esperada do modelo condicionada aos atributos de $S$. Os valores satisfazem a aditividade local, $f(x) = \phi_0 + \sum_{i=1}^{M} \phi_i(f, x)$, sendo $\phi_0$ o valor base (saída média do modelo). O cálculo direto tem custo exponencial em $M$; para modelos baseados em árvores, o algoritmo TreeSHAP calcula os valores exatos em tempo polinomial \cite{lundberg2020local}, o que torna viável explicar todas as instâncias de um conjunto de teste. Agregados pela média dos valores absolutos, os valores locais fornecem uma medida de importância global.
+
+\subsection{\textit{Design Science Research}}
+\label{sec:fund_dsr}
+
+A DSR é um paradigma orientado à criação e à avaliação de artefatos que resolvem problemas relevantes; a avaliação rigorosa do artefato é parte constitutiva da contribuição científica \cite{hevner2004design}. Em \cite{peffers2007design}, o paradigma é sistematizado em seis atividades iterativas, cuja aplicação a este trabalho é descrita na Seção~\ref{sec:metodologia}.
+
+\subsection{Trabalhos Relacionados}
+\label{sec:trabalhos}
+
+Em \cite{luz2025uso}, foram usados os microdados do ENEM 2023 para classificar estudantes com risco de desempenho abaixo da média geral, empregando apenas variáveis socioeconômicas. O melhor desempenho coube ao C-CatBoost, variante do CatBoost sem \textit{embeddings}, com AUC-ROC de 0,816 e F1 de 0,758 na classe positiva; a renda familiar \textit{per capita} foi a variável mais importante. Os autores defendem que os resultados sejam interpretados em nível agregado, como indicadores de desigualdades estruturais, e não como base para decisões individuais. Em \cite{souza2025desigualdades}, foram desenvolvidos dez modelos Random Forest com o ENEM 2023, balanceados por SMOTE, para identificar alto e baixo desempenho em cada nota; com acurácias em torno de 94\%, a escolaridade e a ocupação dos pais e a renda familiar emergiram como principais preditores. Nenhum dos dois estudos audita a equidade das predições.
+
+No contexto internacional, com o conjunto OULAD (\textit{Open University Learning Analytics Dataset}), \cite{aoudi2025fairness} mostraram que um Random Forest com AUC-ROC de 0,965 desfavorecia alunos sem qualificações prévias (DI de 0,25). Avaliadas separadamente, a reponderação de instâncias reduziu as disparidades apenas de forma modesta, e o ajuste de limiares por grupo elevou o DI para 0,45, à custa de redução do \textit{recall}. Bibliotecas como Fairlearn \cite{bird2020fairlearn} e AI Fairness 360 \cite{bellamy2018aif360} implementam os critérios de justiça, mas exigem integração programática especializada; o Fairkit-learn \cite{johnson2022fairkit} expõe interativamente o \textit{trade-off} entre acurácia e equidade por meio de buscas em grade. No domínio clínico, \cite{alu2026auditing} propuseram uma auditoria de equidade baseada em registros de proveniência, avaliada sobre dados sintéticos com viés de gênero embutido deliberadamente, cuja magnitude foi variada em uma análise de sensibilidade; as predições individuais são decompostas por variável apenas na regressão logística.
+
+A Tabela~\ref{tab:comparativo} sintetiza a comparação. A validação com viés de magnitude controlada não é exclusiva deste trabalho, pois \cite{alu2026auditing} a empregam sobre dados clínicos sintéticos. O diferencial está na combinação de três elementos: a aplicação a dados reais do ENEM, a explicação local de um modelo não linear (XGBoost) por TreeSHAP e um protocolo de injeção de viés nos rótulos de treino acompanhado de um controle negativo pareado, integrados a uma interface publicada para usuários não técnicos.
+
+\begin{table}[htbp]
+\centering
+\caption{Comparativo de trabalhos relacionados}
+\label{tab:comparativo}
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Trabalho} & \textbf{ENEM} & \textbf{\textit{Fairness}} & \textbf{XAI} & \textbf{Arq. desacopl.} & \textbf{Injeção} \\
+\midrule
+\cite{luz2025uso} & Sim & Não & Parcial$^{a}$ & Não & Não \\
+\cite{souza2025desigualdades} & Sim & Não & Parcial$^{a}$ & Não & Não \\
+\cite{aoudi2025fairness} & Não & Sim & Não & Não & Não \\
+\cite{alu2026auditing} & Não & Sim & Parcial$^{b}$ & Não & Sim$^{c}$ \\
+Fairlearn / AIF360 & Não & Sim & Não & Não & Não \\
+Fairkit-learn & Não & Sim & Não & Não & Não \\
+\textbf{Este trabalho} & \textbf{Sim} & \textbf{Sim} & \textbf{Sim} & \textbf{Sim} & \textbf{Sim} \\
+\bottomrule
+\end{tabular}
+\fonte{Elaborado pelos autores. Fairlearn \cite{bird2020fairlearn}; AIF360 \cite{bellamy2018aif360}; Fairkit-learn \cite{johnson2022fairkit}.}
+\nota{$^{a}$~Importância global das variáveis, sem explicação local. $^{b}$~Contribuições por variável em predições individuais apenas no modelo linear. $^{c}$~Viés de magnitude controlada embutido na geração de dados sintéticos.}
+\end{table}
+
+\textbf{Panorama regulatório.} O Art.~20 da LGPD assegura ao titular a revisão de decisões tomadas unicamente com base em tratamento automatizado e informações claras e adequadas sobre seus critérios e procedimentos \cite{brasil2018lgpd}. A Nota Técnica nº 12/2025 da Autoridade Nacional de Proteção de Dados (ANPD) delimitou que o direito à explicação é atendido pelo fornecimento da lógica normativa da decisão, sem exigir o detalhamento da lógica técnica proprietária; em casos de recusa injustificada de informações, porém, a ANPD detém competência para realizar auditorias a fim de apurar discriminação algorítmica \cite{anpd2025nota12}. O Projeto de Lei nº 2.338/2023 tende a classificar sistemas preditivos empregados em processos seletivos educacionais como de alto risco \cite{brasil2023pl2338}; se aprovado nesses termos, imporia avaliações de impacto algorítmico e mecanismos de revisão e explicação, o que confere relevância regulatória a ferramentas de auditoria.

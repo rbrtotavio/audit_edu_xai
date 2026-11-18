@@ -1,5 +1,9 @@
+@preamble{ "\providecommand{\bibparticle}[1]{#1\aftergroup\bibparticlegobble}\providecommand{\bibparticlegobble}{\futurelet\bibparticlenext\bibparticlecheck}\providecommand{\bibparticlecheck}{\ifx\bibparticlenext.\expandafter\bibparticleeat\fi}\providecommand{\bibparticleeat}[1]{}" }
+% \bibparticle{...}: particula de nome (da, de) que, abreviada pelo estilo,
+% nao recebe ponto ("Luz, D. M. da" em vez de "Luz, D. M. d.").
+
 @article{luz2025uso,
-  author = {Luz, David Melo da and Matheus, Nat{\'a}lia de Mesquita},
+  author = {Luz, David Melo {\bibparticle{da}} and Matheus, Nat{\'a}lia {\bibparticle{de}} Mesquita},
   title = {Uso de Machine Learning e Vari{\'a}veis Socioecon{\^o}micas na Previs{\~a}o de Desempenho do {ENEM}: potencialidades, limites e implica{\c{c}}{\~o}es {\'e}ticas},
   journal = {RENOTE: Revista Novas Tecnologias na Educa{\c{c}}{\~a}o},
   volume = {24},
@@ -12,7 +16,7 @@
 }
 
 @article{souza2025desigualdades,
-  author = {Souza, Marcelo de and Klug, Daniel Larion},
+  author = {Souza, Marcelo {\bibparticle{de}} and Klug, Daniel Larion},
   title = {Desigualdades educacionais no {Enem}: uma perspectiva baseada em vari{\'a}veis socioecon{\^o}micas e aprendizagem de m{\'a}quina},
   journal = {Regae: Revista de Gest{\~a}o e Avalia{\c{c}}{\~a}o Educacional},
   address = {Santa Maria},
@@ -38,18 +42,18 @@
 
 @misc{bird2020fairlearn,
   author = {Bird, Sarah and others},
-  title = {Fairlearn: A python package to assess and improve fairness of machine learning models},
+  title = {{Fairlearn}: A {Python} package to assess and improve fairness of machine learning models},
   year = {2020},
   note = {Microsoft Technical Report}
 }
 
 @article{bellamy2018aif360,
   author = {Bellamy, Rachel K. E. and others},
-  title = {AI Fairness 360: An extensible toolkit for detecting, understanding, and mitigating unwanted algorithmic bias},
+  title = {{AI Fairness 360}: An extensible toolkit for detecting, understanding, and mitigating unwanted algorithmic bias},
   journal = {IBM Journal of Research and Development},
   volume = {63},
   number = {4/5},
-  pages = {4--1},
+  pages = {4:1--4:15},
   year = {2019}
 }
 
@@ -86,7 +90,7 @@
 
 @techreport{anpd2025nota12,
   author = {{Autoridade Nacional de Prote{\c{c}}{\~a}o de Dados}},
-  title = {Nota T{\'e}cnica n{\textordmasculine} 12/2025/CON1/CGN/ANPD: Consolida{\c{c}}{\~a}o das contribui{\c{c}}{\~o}es recebidas na Tomada de Subs{\'i}dios sobre Intelig{\^e}ncia Artificial e Revis{\~a}o de Decis{\~o}es Automatizadas},
+  title = {{Nota T{\'e}cnica} n{\textordmasculine} 12/2025/{CON1/\allowbreak CGN/\allowbreak ANPD}: Consolida{\c{c}}{\~a}o das contribui{\c{c}}{\~o}es recebidas na Tomada de Subs{\'i}dios sobre Intelig{\^e}ncia Artificial e Revis{\~a}o de Decis{\~o}es Automatizadas},
   institution = {ANPD},
   address = {Bras{\'i}lia, DF},
   year = {2025}
@@ -94,7 +98,7 @@
 
 @misc{brasil2023pl2338,
   author = {Brasil},
-  title = {Projeto de Lei n{\textordmasculine} 2.338, de 2023. Disp{\~o}e sobre o uso da Intelig{\^e}ncia Artificial},
+  title = {{Projeto de Lei} n{\textordmasculine} 2.338, de 2023. {Disp{\~o}e} sobre o uso da Intelig{\^e}ncia Artificial},
   year = {2023},
   note = {Em tramita{\c{c}}{\~a}o na C{\^a}mara dos Deputados}
 }
@@ -133,7 +137,7 @@
 @inproceedings{feldman2015certifying,
   author = {Feldman, Michael and Friedler, Sorelle A. and Moeller, John and Scheidegger, Carlos and Venkatasubramanian, Suresh},
   title = {Certifying and Removing Disparate Impact},
-  booktitle = {Proceedings of the 21th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
+  booktitle = {Proceedings of the 21st ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
   pages = {259--268},
   year = {2015},
   publisher = {ACM},
@@ -162,7 +166,7 @@
 
 @misc{eeoc1978uniform,
   author = {{Equal Employment Opportunity Commission}},
-  title = {Uniform Guidelines on Employee Selection Procedures, 29 C.F.R. {\S} 1607.4(D)},
+  title = {Uniform Guidelines on Employee Selection Procedures, 29 {C.F.R.} {\S} 1607.4({D})},
   year = {1978},
   note = {Federal Register, v. 43, n. 166, p. 38290--38315}
 }
@@ -339,7 +343,7 @@
 
 @misc{brasil2018lgpd,
   author = {Brasil},
-  title = {Lei n{\textordmasculine} 13.709, de 14 de agosto de 2018. Lei Geral de Prote{\c{c}}{\~a}o de Dados Pessoais ({LGPD})},
+  title = {Lei n{\textordmasculine} 13.709, de 14 de agosto de 2018. {Lei Geral de Prote{\c{c}}{\~a}o de Dados Pessoais} ({LGPD})},
   howpublished = {Di{\'a}rio Oficial da Uni{\~a}o, Bras{\'i}lia, DF, 15 ago. 2018},
   year = {2018}
 }

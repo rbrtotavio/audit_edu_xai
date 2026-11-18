@@ -1,0 +1,89 @@
+% =============================================================================
+% Artigo científico (template SBC) derivado da monografia em ../article/.
+% Compilação (pdflatex):
+%   pdflatex main && bibtex main && pdflatex main && pdflatex main
+% Tabelas e figuras de resultados são reutilizadas de ../article/ (geradas por
+% ../article/scripts/gerar_resultados.py a partir de data/outputs/*.parquet).
+% =============================================================================
+\documentclass[12pt]{article}
+
+\usepackage{sbc-template}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[brazilian]{babel}
+\usepackage{graphicx,url}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, fit, backgrounds, shapes.geometric}
+% hyperref omitido: com o sbc-template.sty, gera erro "Undefined control
+% sequence \normalsfcodes" no TeX Live 2026.
+
+% Sinal de menos (U+2212) usado nas tabelas geradas.
+\DeclareUnicodeCharacter{2212}{\ensuremath{-}}
+
+% Equivalentes dos comandos \fonte e \nota do abnTeX2, usados pelas tabelas
+% geradas em ../article/tabelas/: texto pequeno, justificado, abaixo do float.
+\newcommand{\fonte}[1]{\par\vspace{3pt}{\footnotesize\leftskip=0.8cm\rightskip=0.8cm
+  \parfillskip=0pt plus 1fil\parindent=0pt Fonte: #1\par}}
+\newcommand{\nota}[1]{\par\vspace{1pt}{\footnotesize\leftskip=0.8cm\rightskip=0.8cm
+  \parfillskip=0pt plus 1fil\parindent=0pt Nota: #1\par}}
+
+% Autoria das fontes das tabelas geradas (../article/scripts/gerar_resultados.py)
+\newcommand{\elaboradopor}{Elaborado pelos autores}
+
+\setlength{\emergencystretch}{2em}
+
+% Posicionamento de floats: permite tabelas grandes no topo de páginas com texto.
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.8}
+\setcounter{topnumber}{3}
+\setcounter{totalnumber}{4}
+\sloppy
+
+\title{Desenvolvimento de uma Ferramenta de Software para Auditoria Algorítmica e Detecção de Vieses em Modelos Preditivos do ENEM}
+
+\author{Roberto Otávio Pereira Leite\inst{1}, Roberta Macêdo Marques Gouveia\inst{1}}
+
+\address{Departamento de Estatística e Informática\\
+  Universidade Federal Rural de Pernambuco (UFRPE) -- Recife, PE -- Brasil
+  \email{\{roberto.opleite, roberta.gouveia\}@ufrpe.br}
+}
+
+\begin{document}
+
+% Faixa institucional (UFRPE à esquerda, BSI à direita) acima do título;
+% logos reutilizados da capa da monografia, sem numeração nem legenda.
+% A faixa é desenhada só na página 1, por cima da página já montada (gancho
+% shipout/foreground do núcleo do LaTeX; origem no canto superior esquerdo),
+% na margem superior: não entra no fluxo vertical, de modo que título,
+% resumos e quebras de página ficam idênticos aos da versão sem logos.
+\newlength{\logoesq}
+\setlength{\logoesq}{\dimexpr 1in+\hoffset+\oddsidemargin\relax}
+\AddToHookNext{shipout/foreground}{%
+  \put(\logoesq,-3.1cm){\hbox to \textwidth{%
+    \includegraphics[height=1.5cm,keepaspectratio]{../article/figuras/logo_ufrpe_horizontal.png}%
+    \hfill
+    \includegraphics[height=1.5cm,keepaspectratio]{../article/figuras/logo_bsi.pdf}}}}
+
+\maketitle
+
+\input{secoes/resumo}
+
+\input{secoes/introducao}
+\input{secoes/fundamentacao}
+\input{secoes/metodologia}
+\input{secoes/artefato}
+\input{secoes/resultados}
+\input{secoes/conclusao}
+
+% Fundo irregular só nas páginas de referências: entradas de 3 linhas não se
+% dividem, e o fundo alinhado esticaria a página (Underfull \vbox).
+\raggedbottom
+\bibliographystyle{sbc}
+\bibliography{referencias}
+
+\end{document}
